@@ -11,8 +11,12 @@ import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Mesh;
+  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
+  private bunBottom: THREE.Mesh;
+  private bunTop: THREE.Mesh;
   private indicator: THREE.Mesh;
+  private collectedIngredients: THREE.Mesh[] = [];
+  private ingredientStackHeight: number = 0;
 
   // Player state
   private position: THREE.Vector3;
@@ -36,22 +40,42 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player mesh (capsule)
-    const playerGeometry = new THREE.CapsuleGeometry(0.5, 1, 8, 16);
-    const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
-    this.mesh = new THREE.Mesh(playerGeometry, playerMaterial);
-    this.mesh.castShadow = true;
+    // Create player group (hamburger)
+    this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
+    // Create bottom bun (brown cylinder)
+    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
+    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xd4a574, // Golden brown bun color
+      roughness: 0.7 
+    });
+    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
+    this.bunBottom.position.y = -0.15;
+    this.bunBottom.castShadow = true;
+    this.mesh.add(this.bunBottom);
+
+    // Create top bun (smaller, positioned above)
+    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
+    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xd4a574,
+      roughness: 0.7 
+    });
+    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
+    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
+    this.bunTop.castShadow = true;
+    this.mesh.add(this.bunTop);
+
     // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.3, 0.6, 8);
+    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
     const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     this.indicator.rotation.x = Math.PI / 2;
-    this.indicator.position.z = 0.8;
+    this.indicator.position.z = 0.6;
+    this.indicator.position.y = 0.25;
     this.mesh.add(this.indicator);
 
-    console.log('[Player] Created');
+    console.log('[Player] Created as hamburger');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -154,7 +178,7 @@ export class Player {
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 1;
+      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
       const playerRadius = 0.5;
 
       // Check horizontal overlap
@@ -170,7 +194,7 @@ export class Player {
           playerBottom >= bounds.min.y &&
           this.velocity.y <= 0
         ) {
-          this.position.y = bounds.max.y + 1;
+          this.position.y = bounds.max.y + 0.3;
           this.velocity.y = 0;
           this.onGround = true;
         }
@@ -208,16 +232,43 @@ export class Player {
     camera.lookAt(this.position);
   }
 
+  addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
+    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
+    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
+    this.mesh.add(ingredientMesh);
+    this.collectedIngredients.push(ingredientMesh);
+    this.ingredientStackHeight += height;
+    
+    // Move top bun and indicator higher to sit on top of ingredients
+    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
+    this.indicator.position.y = this.ingredientStackHeight + 0.15;
+    
+    console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
+  }
+
   getPosition(): THREE.Vector3 {
     return this.position.clone();
   }
 
+  getRadius(): number {
+    return 0.5;
+  }
+
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    (this.mesh.material as THREE.Material).dispose();
+    this.bunBottom.geometry.dispose();
+    (this.bunBottom.material as THREE.Material).dispose();
+    this.bunTop.geometry.dispose();
+    (this.bunTop.material as THREE.Material).dispose();
     this.indicator.geometry.dispose();
     (this.indicator.material as THREE.Material).dispose();
+    
+    // Dispose collected ingredients
+    for (const ingredient of this.collectedIngredients) {
+      ingredient.geometry.dispose();
+      (ingredient.material as THREE.Material).dispose();
+    }
+    
     console.log('[Player] Disposed');
   }
 }
