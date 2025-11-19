@@ -8,6 +8,7 @@
 import * as THREE from 'three';
 import type { Engine } from '../../engine/Engine';
 import type { Platform } from './Platform';
+import { IngredientType } from './Ingredient';
 
 export class Player {
   private engine: Engine;
@@ -16,6 +17,7 @@ export class Player {
   private bunTop: THREE.Mesh;
   private indicator: THREE.Mesh;
   private collectedIngredients: THREE.Mesh[] = [];
+  private collectedIngredientTypes: IngredientType[] = []; // Track ingredient types
   private ingredientStackHeight: number = 0;
 
   // Player state
@@ -232,20 +234,45 @@ export class Player {
     camera.lookAt(this.position);
   }
 
-  addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
+  addIngredient(ingredientMesh: THREE.Mesh, height: number, ingredientType: IngredientType): void {
     // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
     ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
     ingredientMesh.position.x = 0;
     ingredientMesh.position.z = 0;
     this.mesh.add(ingredientMesh);
     this.collectedIngredients.push(ingredientMesh);
+    this.collectedIngredientTypes.push(ingredientType);
     this.ingredientStackHeight += height;
     
     // Move top bun and indicator higher to sit on top of ingredients
     this.bunTop.position.y = this.ingredientStackHeight + 0.1;
     this.indicator.position.y = this.ingredientStackHeight + 0.15;
     
-    console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
+    console.log(`[Player] Added ingredient ${ingredientType}. Stack height: ${this.ingredientStackHeight}`);
+  }
+
+  getIngredientList(): IngredientType[] {
+    return [...this.collectedIngredientTypes];
+  }
+
+  resetIngredients(): void {
+    // Remove all ingredient meshes from the scene
+    for (const ingredient of this.collectedIngredients) {
+      this.mesh.remove(ingredient);
+      ingredient.geometry.dispose();
+      (ingredient.material as THREE.Material).dispose();
+    }
+    
+    // Clear arrays
+    this.collectedIngredients = [];
+    this.collectedIngredientTypes = [];
+    this.ingredientStackHeight = 0;
+    
+    // Reset top bun and indicator positions
+    this.bunTop.position.y = 0.25;
+    this.indicator.position.y = 0.25;
+    
+    console.log('[Player] Ingredients reset - back to empty bun');
   }
 
   getPosition(): THREE.Vector3 {

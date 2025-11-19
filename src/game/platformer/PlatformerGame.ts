@@ -11,12 +11,15 @@ import type { Game } from '../../engine/Types';
 import { Player } from './Player';
 import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
+import { Customer } from './Customer';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
+  private customers: Customer[] = [];
+  private currentCustomer: Customer | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -35,6 +38,9 @@ export class PlatformerGame implements Game {
 
     // Create ingredients
     this.createIngredients();
+
+    // Create customers
+    this.createCustomers();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -130,6 +136,51 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private createCustomers(): void {
+    // Define customer positions and their orders
+    const customerConfigs = [
+      {
+        x: 5, y: 1.75, z: 0,
+        order: [IngredientType.LETTUCE, IngredientType.TOMATO, IngredientType.CHEESE]
+      },
+      {
+        x: -8, y: 3.25, z: -5,
+        order: [IngredientType.BACON, IngredientType.CHEESE]
+      },
+      {
+        x: 15, y: 2.25, z: -10,
+        order: [IngredientType.PICKLE, IngredientType.ONION, IngredientType.TOMATO]
+      },
+      {
+        x: -15, y: 2.75, z: 10,
+        order: [IngredientType.CHEESE, IngredientType.BACON, IngredientType.LETTUCE]
+      },
+      {
+        x: 25, y: 3.75, z: 0,
+        order: [IngredientType.TOMATO, IngredientType.PICKLE]
+      },
+      {
+        x: -20, y: 3.25, z: 5,
+        order: [IngredientType.ONION, IngredientType.CHEESE, IngredientType.BACON, IngredientType.LETTUCE]
+      },
+      {
+        x: 0, y: 2.75, z: 22,
+        order: [IngredientType.LETTUCE, IngredientType.TOMATO]
+      },
+      {
+        x: -25, y: 1.5, z: -2,
+        order: [IngredientType.PICKLE, IngredientType.ONION]
+      },
+    ];
+
+    for (const config of customerConfigs) {
+      const customer = new Customer(this.engine, new THREE.Vector3(config.x, config.y, config.z), {
+        ingredients: config.order
+      });
+      this.customers.push(customer);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -146,9 +197,58 @@ export class PlatformerGame implements Game {
           // Add ingredient to player's stack
           const ingredientMesh = ingredient.createMeshForPlayer();
           const ingredientHeight = ingredient.getHeight();
-          this.player.addIngredient(ingredientMesh, ingredientHeight);
+          const ingredientType = ingredient.getType();
+          this.player.addIngredient(ingredientMesh, ingredientHeight, ingredientType);
         }
       }
+    }
+
+    // Check customer interactions
+    const playerPos = this.player.getPosition();
+    let nearCustomer: Customer | null = null;
+    
+    for (const customer of this.customers) {
+      if (!customer.isOrderFulfilled() && customer.checkInteraction(playerPos)) {
+        nearCustomer = customer;
+        break;
+      }
+    }
+
+    // Handle customer interaction
+    if (nearCustomer) {
+      if (this.currentCustomer !== nearCustomer) {
+        this.currentCustomer = nearCustomer;
+        this.updateOrderUI(nearCustomer);
+        console.log('[PlatformerGame] Near customer with order:', nearCustomer.getOrder().ingredients);
+      }
+
+      // Check if player wants to deliver (press E key)
+      const input = this.engine.input;
+      const shouldInteract = input.isKeyPressed('KeyE');
+
+      if (shouldInteract) {
+        const playerIngredients = this.player.getIngredientList();
+        if (nearCustomer.validateOrder(playerIngredients)) {
+          // Order matches! Fulfill it
+          nearCustomer.fulfillOrder();
+          this.player.resetIngredients();
+          this.hideOrderUI();
+          this.currentCustomer = null;
+          console.log('[PlatformerGame] Order delivered! Ingredients reset.');
+        } else {
+          console.log('[PlatformerGame] Order does not match. Required:', nearCustomer.getOrder().ingredients, 'Got:', playerIngredients);
+        }
+      }
+    } else {
+      if (this.currentCustomer) {
+        this.hideOrderUI();
+        this.currentCustomer = null;
+      }
+    }
+
+    // Update customers
+    for (const customer of this.customers) {
+      customer.update(deltaTime);
     }
   }
 
@@ -156,13 +256,54 @@ export class PlatformerGame implements Game {
     // Handle resize if needed
   }
 
+  private updateOrderUI(customer: Customer): void {
+    const orderElement = document.getElementById('customer-order');
+    const ingredientsElement = document.getElementById('order-ingredients');
+    
+    if (!orderElement || !ingredientsElement) return;
+
+    const order = customer.getOrder();
+    ingredientsElement.innerHTML = '';
+
+    const ingredientColors: Record<IngredientType, string> = {
+      [IngredientType.LETTUCE]: '#90ee90',
+      [IngredientType.BACON]: '#cd5c5c',
+      [IngredientType.CHEESE]: '#ffd700',
+      [IngredientType.TOMATO]: '#ff6347',
+      [IngredientType.PICKLE]: '#32cd32',
+      [IngredientType.ONION]: '#fff8dc',
+    };
+
+    order.ingredients.forEach((ingredient) => {
+      const item = document.createElement('div');
+      item.className = 'ingredient-item';
+      item.textContent = ingredient;
+      item.style.backgroundColor = ingredientColors[ingredient] || '#ffffff';
+      item.style.color = '#000';
+      ingredientsElement.appendChild(item);
+    });
+
+    orderElement.classList.add('show');
+  }
+
+  private hideOrderUI(): void {
+    const orderElement = document.getElementById('customer-order');
+    if (orderElement) {
+      orderElement.classList.remove('show');
+    }
+  }
+
   dispose(): void {
+    this.hideOrderUI();
     this.player.dispose();
     for (const platform of this.platforms) {
       platform.dispose();
     }
     for (const ingredient of this.ingredients) {
       ingredient.dispose();
+    }
+    for (const customer of this.customers) {
+      customer.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }

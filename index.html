@@ -45,6 +45,52 @@
                 display: none;
             }
         }
+
+        #customer-order {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 20px;
+            border-radius: 10px;
+            font-size: 16px;
+            display: none;
+            border: 2px solid #ffff00;
+            min-width: 300px;
+            text-align: center;
+        }
+
+        #customer-order.show {
+            display: block;
+        }
+
+        #customer-order h3 {
+            margin-top: 0;
+            color: #ffff00;
+        }
+
+        #customer-order .ingredients-list {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 15px 0;
+        }
+
+        #customer-order .ingredient-item {
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-transform: capitalize;
+        }
+
+        #customer-order .instruction {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+        }
     </style>
 </head>
 <body>
@@ -56,7 +102,13 @@
             <li>SPACE - Jump</li>
             <li>Mouse - Look around</li>
             <li>Click to lock pointer</li>
+            <li>E - Deliver order (when near customer)</li>
         </ul>
+    </div>
+    <div id="customer-order">
+        <h3>Customer Order</h3>
+        <div class="ingredients-list" id="order-ingredients"></div>
+        <div class="instruction">Press E to deliver</div>
     </div>
     <script type="module" src="/src/main.ts"></script>
 </body>
