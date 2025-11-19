@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Game - AI Editable</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+            touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+
+        #instructions {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            background-color: rgba(0, 0, 0, 0.7);
+            padding: 15px;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        #instructions h3 {
+            margin-top: 0;
+        }
+
+        #instructions ul {
+            margin-bottom: 0;
+            padding-left: 20px;
+        }
+
+        /* Hide instructions on mobile portrait */
+        @media (max-width: 768px) and (orientation: portrait) {
+            #instructions {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="game-canvas"></canvas>
+    <div id="instructions">
+        <h3>Controls</h3>
+        <ul>
+            <li>W/A/S/D - Move</li>
+            <li>SPACE - Jump</li>
+            <li>Mouse - Look around</li>
+            <li>Click to lock pointer</li>
+        </ul>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+</body>
+</html>
