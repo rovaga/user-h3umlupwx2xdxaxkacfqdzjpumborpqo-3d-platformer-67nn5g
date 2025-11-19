@@ -235,6 +235,8 @@ export class Player {
   addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
     // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
     ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
+    ingredientMesh.position.x = 0;
+    ingredientMesh.position.z = 0;
     this.mesh.add(ingredientMesh);
     this.collectedIngredients.push(ingredientMesh);
     this.ingredientStackHeight += height;
