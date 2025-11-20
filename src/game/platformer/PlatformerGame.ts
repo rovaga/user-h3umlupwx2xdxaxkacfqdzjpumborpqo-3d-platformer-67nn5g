@@ -20,6 +20,7 @@ export class PlatformerGame implements Game {
   private ingredients: Ingredient[] = [];
   private customers: Customer[] = [];
   private currentCustomer: Customer | null = null;
+  private score: number = 0;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -41,6 +42,9 @@ export class PlatformerGame implements Game {
 
     // Create customers
     this.createCustomers();
+
+    // Initialize score display
+    this.updateScoreDisplay();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -229,14 +233,20 @@ export class PlatformerGame implements Game {
       if (shouldInteract) {
         const playerIngredients = this.player.getIngredientList();
         if (nearCustomer.validateOrder(playerIngredients)) {
-          // Order matches! Fulfill it
+          // Order matches! Fulfill it and award points
           nearCustomer.fulfillOrder();
           this.player.resetIngredients();
           this.hideOrderUI();
           this.currentCustomer = null;
-          console.log('[PlatformerGame] Order delivered! Ingredients reset.');
+          // Award points for correct order (base points + bonus for number of ingredients)
+          const pointsEarned = 10 + (playerIngredients.length * 5);
+          this.addScore(pointsEarned);
+          console.log(`[PlatformerGame] Order delivered! +${pointsEarned} points. Ingredients reset.`);
         } else {
-          console.log('[PlatformerGame] Order does not match. Required:', nearCustomer.getOrder().ingredients, 'Got:', playerIngredients);
+          // Wrong order - deduct points
+          const pointsLost = 5;
+          this.addScore(-pointsLost);
+          console.log('[PlatformerGame] Order does not match. Required:', nearCustomer.getOrder().ingredients, 'Got:', playerIngredients, `-${pointsLost} points`);
         }
       }
     } else {
@@ -423,6 +433,18 @@ export class PlatformerGame implements Game {
     }
     // Clean up preview scenes when hiding UI
     this.cleanupIngredientPreviews();
+  }
+
+  private addScore(points: number): void {
+    this.score += points;
+    this.updateScoreDisplay();
+  }
+
+  private updateScoreDisplay(): void {
+    const scoreElement = document.getElementById('score');
+    if (scoreElement) {
+      scoreElement.textContent = `Score: ${this.score}`;
+    }
   }
 
   dispose(): void {
