@@ -86,14 +86,14 @@ export class Player {
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
-    this.handleInput();
-    this.applyPhysics();
+    this.handleInput(deltaTime);
+    this.applyPhysics(deltaTime);
     this.checkCollisions(platforms);
     this.updateMesh();
     this.updateCamera();
   }
 
-  private handleInput(): void {
+  private handleInput(deltaTime: number): void {
     const input = this.engine.input;
     const mobileInput = this.engine.mobileInput;
     const isMobile = mobileInput.isMobileControlsActive();
@@ -128,9 +128,9 @@ export class Player {
       worldMoveDirection.addScaledVector(right, moveDirection.x);
       worldMoveDirection.normalize();
 
-      // Move player
-      this.position.x += worldMoveDirection.x * this.speed;
-      this.position.z += worldMoveDirection.z * this.speed;
+      // Move player (frame-rate independent)
+      this.position.x += worldMoveDirection.x * this.speed * deltaTime * 60; // Scale to maintain same speed at 60 FPS
+      this.position.z += worldMoveDirection.z * this.speed * deltaTime * 60;
 
       // Rotate player to face movement direction
       this.rotation = Math.atan2(worldMoveDirection.x, worldMoveDirection.z);
@@ -142,25 +142,25 @@ export class Player {
       : input.isKeyPressed('Space');
 
     if (shouldJump && this.onGround) {
-      this.velocity.y = this.jumpForce;
+      this.velocity.y = this.jumpForce * 60; // Scale jump force to maintain same height at 60 FPS
       this.onGround = false;
     }
 
     // Camera control (mouse or touch)
     if (isMobile) {
-      // Mobile touch camera
+      // Mobile touch camera (frame-rate independent)
       const touchDelta = mobileInput.getCameraDelta();
-      this.cameraRotationY -= touchDelta.x * 0.005;
-      this.cameraRotationX -= touchDelta.y * 0.005;
+      this.cameraRotationY -= touchDelta.x * 0.005 * deltaTime * 60; // Scale to maintain same sensitivity at 60 FPS
+      this.cameraRotationX -= touchDelta.y * 0.005 * deltaTime * 60;
       this.cameraRotationX = Math.max(
         -Math.PI / 3,
         Math.min(Math.PI / 3, this.cameraRotationX)
       );
     } else if (input.isPointerLocked()) {
-      // Mouse camera
+      // Mouse camera (frame-rate independent)
       const mouseDelta = input.getMouseDelta();
-      this.cameraRotationY -= mouseDelta.x * 0.002;
-      this.cameraRotationX -= mouseDelta.y * 0.002;
+      this.cameraRotationY -= mouseDelta.x * 0.002 * deltaTime * 60; // Scale to maintain same sensitivity at 60 FPS
+      this.cameraRotationX -= mouseDelta.y * 0.002 * deltaTime * 60;
       this.cameraRotationX = Math.max(
         -Math.PI / 3,
         Math.min(Math.PI / 3, this.cameraRotationX)
@@ -168,10 +168,10 @@ export class Player {
     }
   }
 
-  private applyPhysics(): void {
-    // Apply gravity
-    this.velocity.y += this.gravity;
-    this.position.y += this.velocity.y;
+  private applyPhysics(deltaTime: number): void {
+    // Apply gravity (frame-rate independent)
+    this.velocity.y += this.gravity * deltaTime * 60; // Scale to maintain same gravity at 60 FPS
+    this.position.y += this.velocity.y * deltaTime * 60;
 
     // Reset to spawn if fallen off the world
     if (this.position.y < -10) {

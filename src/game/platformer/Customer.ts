@@ -21,6 +21,7 @@ export class Customer {
   private interactionRadius: number = 2.5;
   private orderTextMesh: THREE.Mesh | null = null;
   private orderTextSprite: THREE.Sprite | null = null;
+  private bobTime: number = 0;
 
   constructor(engine: Engine, position: THREE.Vector3, order: CustomerOrder) {
     this.engine = engine;
@@ -152,8 +153,9 @@ export class Customer {
   }
 
   update(deltaTime: number): void {
-    // Animate customer (gentle bobbing)
-    const bobAmount = Math.sin(Date.now() * 0.001) * 0.05;
+    // Animate customer (gentle bobbing, frame-rate independent)
+    this.bobTime += deltaTime;
+    const bobAmount = Math.sin(this.bobTime * 1.0) * 0.05; // 1.0 radians per second
     this.mesh.position.y = this.position.y + bobAmount;
   }
 

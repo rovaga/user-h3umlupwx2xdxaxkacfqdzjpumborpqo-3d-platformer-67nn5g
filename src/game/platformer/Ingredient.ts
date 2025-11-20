@@ -124,9 +124,9 @@ export class Ingredient {
   update(deltaTime: number): void {
     if (this.collected) return;
 
-    // Rotate and float animation
-    this.mesh.rotation.y += this.rotationSpeed;
-    this.floatOffset += this.floatSpeed;
+    // Rotate and float animation (frame-rate independent)
+    this.mesh.rotation.y += this.rotationSpeed * deltaTime * 60; // Scale to maintain same rotation speed at 60 FPS
+    this.floatOffset += this.floatSpeed * deltaTime * 60; // Scale to maintain same float speed at 60 FPS
     this.mesh.position.y = this.position.y + Math.sin(this.floatOffset) * 0.1;
   }
 

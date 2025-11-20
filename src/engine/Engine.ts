@@ -24,7 +24,7 @@ export class Engine {
   public readonly assetLoader: AssetLoader;
 
   private game: Game | null = null;
-  private lastTime: number = 0;
+  private clock: THREE.Clock;
   private animationId: number | null = null;
   private canvas: HTMLCanvasElement;
   private config: EngineConfig;
@@ -89,6 +89,9 @@ export class Engine {
 
     // Asset loader setup
     this.assetLoader = new AssetLoader();
+
+    // Initialize Three.js Clock for frame-rate independent movement
+    this.clock = new THREE.Clock();
 
     // Window resize handling
     window.addEventListener('resize', this.handleResize.bind(this));
@@ -167,9 +170,8 @@ export class Engine {
     }
     this.lastFrameTime = time - (elapsed % this.frameInterval);
 
-    // Calculate delta time in seconds
-    const deltaTime = this.lastTime ? (time - this.lastTime) / 1000 : 0;
-    this.lastTime = time;
+    // Get delta time in seconds from Three.js Clock
+    const deltaTime = this.clock.getDelta();
 
     // Update game
     if (this.game) {
@@ -214,7 +216,7 @@ export class Engine {
     }
 
     this.game = game;
-    this.lastTime = 0;
+    this.clock.start();
     this.lastFrameTime = 0;
     console.log('[Engine] Starting game');
     this.animate(0);
