@@ -190,14 +190,15 @@ export class PlatformerGame implements Game {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
 
-    // Update ingredients
+    // Update ingredients (optimize: cache player position)
+    const playerPos = this.player.getPosition();
+    const playerRadius = this.player.getRadius();
+    
     for (const ingredient of this.ingredients) {
       if (!ingredient.isCollected()) {
         ingredient.update(deltaTime);
 
-        // Check collision with player
-        const playerPos = this.player.getPosition();
-        const playerRadius = this.player.getRadius();
+        // Check collision with player (optimized distance check)
         if (ingredient.checkCollision(playerPos, playerRadius)) {
           // Add ingredient to player's stack
           const ingredientMesh = ingredient.createMeshForPlayer();
@@ -208,14 +209,13 @@ export class PlatformerGame implements Game {
       }
     }
 
-    // Check customer interactions
-    const playerPos = this.player.getPosition();
+    // Check customer interactions (reuse cached playerPos)
     let nearCustomer: Customer | null = null;
     
     for (const customer of this.customers) {
       if (!customer.isOrderFulfilled() && customer.checkInteraction(playerPos)) {
         nearCustomer = customer;
-        break;
+        break; // Found one, no need to check others
       }
     }
 
@@ -257,9 +257,13 @@ export class PlatformerGame implements Game {
       }
     }
 
-    // Update customers
-    for (const customer of this.customers) {
-      customer.update(deltaTime);
+    // Update customers (throttle on mobile for better performance)
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+    if (!isMobile || (Math.floor(performance.now() / 33) % 2 === 0)) {
+      // Update every frame on desktop, every 2nd frame on mobile (33ms = ~30fps)
+      for (const customer of this.customers) {
+        customer.update(deltaTime);
+      }
     }
   }
 
@@ -267,14 +271,12 @@ export class PlatformerGame implements Game {
     // Handle resize if needed
   }
 
-  private ingredientPreviewScenes: Array<{
-    scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
-    renderer: THREE.WebGLRenderer;
-    mesh: THREE.Mesh;
+  private ingredientPreviewCanvases: Array<{
     canvas: HTMLCanvasElement;
+    ctx: CanvasRenderingContext2D;
+    color: number;
+    type: IngredientType;
   }> = [];
-  private previewAnimationId: number | null = null;
 
   private updateOrderUI(customer: Customer): void {
     const orderElement = document.getElementById('customer-order');
@@ -282,7 +284,7 @@ export class PlatformerGame implements Game {
     
     if (!orderElement || !ingredientsElement) return;
 
-    // Clean up previous preview scenes
+    // Clean up previous preview canvases
     this.cleanupIngredientPreviews();
 
     const order = customer.getOrder();
@@ -293,21 +295,27 @@ export class PlatformerGame implements Game {
         const item = document.createElement('div');
         item.className = 'ingredient-item';
         
-        // Create container for 3D preview and text
+        // Create container for preview and text
         const previewContainer = document.createElement('div');
         previewContainer.className = 'ingredient-preview-container';
         
-        // Create canvas for 3D preview
+        // Create canvas for 2D preview (much lighter than WebGL)
         const canvas = document.createElement('canvas');
         canvas.className = 'ingredient-preview-canvas';
         canvas.width = 80;
         canvas.height = 80;
         
-        // Create 3D preview scene
-        const previewScene = this.createIngredientPreview(ingredientType, canvas);
-        // Only add valid previews (skip null/failed ones)
-        if (previewScene && previewScene.renderer && previewScene.scene) {
-          this.ingredientPreviewScenes.push(previewScene);
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          // Get ingredient config for color
+          const config = Ingredient.getIngredientConfig(ingredientType);
+          const color = config ? config.color : 0xffffff;
+          
+          // Draw 2D preview
+          this.drawIngredientPreview(ctx, ingredientType, color);
+          
+          // Store canvas reference for cleanup
+          this.ingredientPreviewCanvases.push({ canvas, ctx, color, type: ingredientType });
         }
         
         // Add canvas to container
@@ -328,183 +336,135 @@ export class PlatformerGame implements Game {
     });
 
     orderElement.classList.add('show');
-    
-    // Start animation loop for previews
-    this.animateIngredientPreviews();
   }
 
-  private createIngredientPreview(ingredientType: IngredientType, canvas: HTMLCanvasElement): {
-    scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
-    renderer: THREE.WebGLRenderer;
-    mesh: THREE.Mesh;
-    canvas: HTMLCanvasElement;
-  } {
-    try {
-      // Create a small scene for the preview
-      const scene = new THREE.Scene();
-      scene.background = new THREE.Color(0x2a2a2a);
-      
-      // Camera positioned to view the ingredient
-      const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
-      camera.position.set(0.8, 0.6, 0.8);
-      camera.lookAt(0, 0, 0);
-      
-      // Renderer for the preview canvas
-      // Optimize for mobile: disable antialiasing, limit pixel ratio
-      const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
-      const renderer = new THREE.WebGLRenderer({ 
-        canvas,
-        antialias: false, // Disable antialiasing for better performance
-        alpha: true,
-        preserveDrawingBuffer: false,
-        powerPreference: "low-power"
-      });
-      renderer.setSize(80, 80);
-      // Limit pixel ratio more aggressively on mobile
-      renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
-      
-      // Lighting for the preview
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
-      scene.add(ambientLight);
-      
-      const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
-      directionalLight.position.set(1, 1, 1);
-      scene.add(directionalLight);
-      
-      // Create the ingredient mesh using the same config as Ingredient class
-      const config = Ingredient.getIngredientConfig(ingredientType);
-      if (!config) {
-        throw new Error(`No config found for ingredient type: ${ingredientType}`);
-      }
-      const geometry = config.geometry();
-      const material = new THREE.MeshStandardMaterial({
-        color: config.color,
-        roughness: 0.6,
-        metalness: ingredientType === IngredientType.CHEESE ? 0.3 : 0,
-      });
-      
-      const mesh = new THREE.Mesh(geometry, material);
-      scene.add(mesh);
-      
-      // Initial render - wrap in try-catch to handle context errors
-      try {
-        renderer.render(scene, camera);
-      } catch (renderError) {
-        console.warn('[PlatformerGame] Failed to render ingredient preview:', renderError);
-        // Continue anyway - the animation loop will try again
-      }
-      
-      return { scene, camera, renderer, mesh, canvas };
-    } catch (error) {
-      console.error('[PlatformerGame] Failed to create ingredient preview:', error);
-      // Create a fallback 2D canvas instead of WebGL
-      const ctx = canvas.getContext('2d');
-      if (ctx) {
-        ctx.fillStyle = '#666';
-        ctx.fillRect(0, 0, 80, 80);
-        ctx.fillStyle = '#fff';
-        ctx.font = '12px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText(ingredientType.substring(0, 3).toUpperCase(), 40, 40);
-      }
-      
-      // Return null to indicate failure - the animation loop will skip null previews
-      // We'll modify the animation loop to handle this
-      return null as any; // Type assertion to satisfy return type, but we'll check for null in animation
-    }
-  }
-
-  private animateIngredientPreviews(): void {
-    // Stop any existing animation loop
-    if (this.previewAnimationId !== null) {
-      cancelAnimationFrame(this.previewAnimationId);
-      this.previewAnimationId = null;
-    }
+  /**
+   * Draw a simple 2D preview of an ingredient on a canvas context.
+   * This is much more performant than creating separate WebGL contexts.
+   */
+  private drawIngredientPreview(ctx: CanvasRenderingContext2D, ingredientType: IngredientType, color: number): void {
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    const centerX = width / 2;
+    const centerY = height / 2;
     
-    // Throttle preview animations on mobile (render less frequently)
-    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
-    let lastPreviewTime = 0;
-    const previewFrameInterval = isMobile ? 1000 / 15 : 1000 / 30; // 15 FPS on mobile, 30 FPS on desktop
+    // Clear canvas with dark background
+    ctx.fillStyle = '#2a2a2a';
+    ctx.fillRect(0, 0, width, height);
     
-    const animate = (time: number) => {
-      if (this.ingredientPreviewScenes.length === 0) {
-        this.previewAnimationId = null;
-        return;
-      }
-      
-      // Throttle rendering for better performance
-      const elapsed = time - lastPreviewTime;
-      if (elapsed < previewFrameInterval) {
-        this.previewAnimationId = requestAnimationFrame(animate);
-        return;
-      }
-      lastPreviewTime = time - (elapsed % previewFrameInterval);
-      
-      this.ingredientPreviewScenes.forEach((preview) => {
-        // Skip null previews (failed to create)
-        if (!preview || !preview.renderer || !preview.scene || !preview.camera) {
-          return;
+    // Convert hex color to RGB
+    const r = (color >> 16) & 0xff;
+    const g = (color >> 8) & 0xff;
+    const b = color & 0xff;
+    const colorStr = `rgb(${r}, ${g}, ${b})`;
+    
+    // Draw ingredient shape based on type
+    ctx.fillStyle = colorStr;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
+    ctx.lineWidth = 2;
+    
+    switch (ingredientType) {
+      case IngredientType.LETTUCE:
+        // Draw wavy lettuce shape
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Add some texture lines
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 5; i++) {
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, 15 + i * 2, 0, Math.PI * 2);
+          ctx.stroke();
         }
+        break;
         
-        try {
-          // Rotate the mesh (slower rotation on mobile)
-          if (preview.mesh) {
-            preview.mesh.rotation.y += isMobile ? 0.01 : 0.02;
-          }
-          
-          // Check if renderer context is still valid
-          const gl = preview.renderer.getContext();
-          if (gl && !gl.isContextLost()) {
-            preview.renderer.render(preview.scene, preview.camera);
-          }
-        } catch (error) {
-          console.warn('[PlatformerGame] Error rendering ingredient preview:', error);
-          // Continue with other previews
+      case IngredientType.BACON:
+        // Draw rectangular bacon strip
+        ctx.fillRect(centerX - 20, centerY - 8, 40, 16);
+        ctx.strokeRect(centerX - 20, centerY - 8, 40, 16);
+        // Add wavy lines
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 3; i++) {
+          ctx.beginPath();
+          ctx.moveTo(centerX - 20, centerY - 8 + i * 5);
+          ctx.quadraticCurveTo(centerX, centerY - 8 + i * 5 + 2, centerX + 20, centerY - 8 + i * 5);
+          ctx.stroke();
         }
-      });
-      
-      this.previewAnimationId = requestAnimationFrame(animate);
-    };
-    
-    this.previewAnimationId = requestAnimationFrame(animate);
+        break;
+        
+      case IngredientType.CHEESE:
+        // Draw square cheese slice
+        ctx.fillRect(centerX - 20, centerY - 20, 40, 40);
+        ctx.strokeRect(centerX - 20, centerY - 20, 40, 40);
+        // Add holes
+        ctx.fillStyle = 'rgba(255, 200, 0, 0.5)';
+        ctx.beginPath();
+        ctx.arc(centerX - 10, centerY - 10, 3, 0, Math.PI * 2);
+        ctx.arc(centerX + 10, centerY + 10, 3, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+        
+      case IngredientType.TOMATO:
+        // Draw circular tomato
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Add highlight
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+        ctx.beginPath();
+        ctx.arc(centerX - 8, centerY - 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+        
+      case IngredientType.PICKLE:
+        // Draw elongated pickle
+        ctx.beginPath();
+        ctx.ellipse(centerX, centerY, 12, 20, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Add texture lines
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1;
+        for (let i = -1; i <= 1; i++) {
+          ctx.beginPath();
+          ctx.moveTo(centerX + i * 5, centerY - 15);
+          ctx.lineTo(centerX + i * 5, centerY + 15);
+          ctx.stroke();
+        }
+        break;
+        
+      case IngredientType.ONION:
+        // Draw circular onion
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        // Add concentric circles
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 1;
+        for (let i = 1; i < 4; i++) {
+          ctx.beginPath();
+          ctx.arc(centerX, centerY, 6 * i, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        break;
+        
+      default:
+        // Fallback: simple circle
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, 20, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+    }
   }
 
   private cleanupIngredientPreviews(): void {
-    // Stop animation loop
-    if (this.previewAnimationId !== null) {
-      cancelAnimationFrame(this.previewAnimationId);
-      this.previewAnimationId = null;
-    }
-    
-    this.ingredientPreviewScenes.forEach((preview) => {
-      // Skip null/invalid previews
-      if (!preview) return;
-      
-      try {
-        // Dispose of geometries and materials
-        if (preview.mesh && preview.mesh.geometry) {
-          preview.mesh.geometry.dispose();
-        }
-        if (preview.mesh && preview.mesh.material instanceof THREE.Material) {
-          preview.mesh.material.dispose();
-        }
-        
-        // Dispose of renderer
-        if (preview.renderer) {
-          preview.renderer.dispose();
-        }
-        
-        // Remove canvas from DOM if it exists
-        if (preview.canvas && preview.canvas.parentNode) {
-          preview.canvas.parentNode.removeChild(preview.canvas);
-        }
-      } catch (error) {
-        console.warn('[PlatformerGame] Error disposing preview:', error);
-      }
-    });
-    
-    this.ingredientPreviewScenes = [];
+    // Clean up canvas references (2D canvases don't need special disposal)
+    this.ingredientPreviewCanvases = [];
   }
 
   private hideOrderUI(): void {

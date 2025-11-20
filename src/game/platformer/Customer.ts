@@ -151,9 +151,12 @@ export class Customer {
     return this.position.clone();
   }
 
+  private bobTime: number = Math.random() * Math.PI * 2; // Randomize start time
+  
   update(deltaTime: number): void {
-    // Animate customer (gentle bobbing)
-    const bobAmount = Math.sin(Date.now() * 0.001) * 0.05;
+    // Animate customer (gentle bobbing) - cache time calculation
+    this.bobTime += deltaTime * 0.5; // Slower animation
+    const bobAmount = Math.sin(this.bobTime) * 0.05;
     this.mesh.position.y = this.position.y + bobAmount;
   }
 

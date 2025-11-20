@@ -182,13 +182,18 @@ export class Player {
 
   private checkCollisions(platforms: Platform[]): void {
     this.onGround = false;
+    const playerBottom = this.position.y - 0.3; // Adjusted for bun height
+    const playerRadius = 0.5;
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
-      const playerRadius = 0.5;
+      
+      // Early exit: check if platform is too far away vertically
+      if (playerBottom > bounds.max.y + 1 || playerBottom < bounds.min.y - 1) {
+        continue;
+      }
 
-      // Check horizontal overlap
+      // Check horizontal overlap (optimized - use AABB check first)
       if (
         this.position.x + playerRadius > bounds.min.x &&
         this.position.x - playerRadius < bounds.max.x &&
@@ -204,6 +209,7 @@ export class Player {
           this.position.y = bounds.max.y + 0.3;
           this.velocity.y = 0;
           this.onGround = true;
+          break; // Found ground, no need to check other platforms
         }
       }
     }

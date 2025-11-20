@@ -163,9 +163,12 @@ export class Engine {
     // Frame rate limiting for mobile devices
     const elapsed = time - this.lastFrameTime;
     if (elapsed < this.frameInterval) {
-      return; // Skip this frame to maintain target FPS
+      // Continue the animation loop but skip rendering
+      this.animationId = requestAnimationFrame(this.animate);
+      return;
     }
-    this.lastFrameTime = time - (elapsed % this.frameInterval);
+    // Use accumulated time for smoother updates
+    this.lastFrameTime = time;
 
     // Calculate delta time in seconds
     const deltaTime = this.lastTime ? (time - this.lastTime) / 1000 : 0;
