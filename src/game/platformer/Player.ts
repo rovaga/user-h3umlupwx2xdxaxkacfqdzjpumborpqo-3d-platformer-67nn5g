@@ -37,9 +37,9 @@ export class Player {
   private cameraRotationY = 0;
   private cameraRotationX = 0.3;
 
-  constructor(engine: Engine) {
+  constructor(engine: Engine, startPosition?: THREE.Vector3) {
     this.engine = engine;
-    this.position = new THREE.Vector3(0, 2, 0);
+    this.position = startPosition ? startPosition.clone() : new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
     // Create player group (hamburger)

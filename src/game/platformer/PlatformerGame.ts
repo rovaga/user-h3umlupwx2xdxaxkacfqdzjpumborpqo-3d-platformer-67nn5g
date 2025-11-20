@@ -34,8 +34,11 @@ export class PlatformerGame implements Game {
     // Create platforms
     this.createPlatforms();
 
-    // Create player
-    this.player = new Player(engine);
+    // Create player - start at the counter (kitchen area)
+    const counterY = 1.2; // Counter top height
+    const counterZ = -15; // Counter position
+    const playerStartPos = new THREE.Vector3(0, counterY + 0.5, counterZ + 1); // Slightly in front of counter
+    this.player = new Player(engine, playerStartPos);
 
     // Create ingredients
     this.createIngredients();
@@ -51,10 +54,11 @@ export class PlatformerGame implements Game {
 
   private createGround(): void {
     const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+    // Create restaurant floor (tile pattern)
     const groundGeometry = new THREE.BoxGeometry(100, 1, 100);
     const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a7c59,
-      roughness: 0.8,
+      color: 0xe8e8e8, // Light gray tile color
+      roughness: 0.6,
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.position.y = -0.5;
@@ -66,70 +70,101 @@ export class PlatformerGame implements Game {
       new Platform(this.engine, {
         position: new THREE.Vector3(0, -0.5, 0),
         size: new THREE.Vector3(100, 1, 100),
-        color: 0x4a7c59,
+        color: 0xe8e8e8,
         visible: false, // Ground mesh is already added
       })
     );
   }
 
   private createPlatforms(): void {
-    const platformConfigs = [
-      { x: 5, y: 1, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: 10, y: 2, z: 5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 0, y: 1.5, z: -8, w: 6, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -8, y: 2.5, z: -5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -5, y: 1, z: 8, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: 8, y: 3, z: -8, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 15, y: 1.5, z: -10, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: -15, y: 2, z: 10, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -12, y: 3, z: -12, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: 18, y: 2.5, z: 8, w: 5, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 20, y: 1, z: 15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -18, y: 1.5, z: -8, w: 5, h: 0.5, d: 5, color: 0xa0522d },
-      { x: 12, y: 4, z: -15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -10, y: 1, z: 15, w: 6, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 25, y: 3, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -20, y: 2.5, z: 5, w: 5, h: 0.5, d: 5, color: 0xa0522d },
-      { x: 8, y: 2, z: 20, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -8, y: 3.5, z: -18, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 0, y: 2, z: 22, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: 15, y: 1, z: -20, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -25, y: 1.5, z: -2, w: 5, h: 0.5, d: 4, color: 0x8b4513 },
+    // Create Carl's Jr restaurant layout
+    
+    // 1. Counter (kitchen/prep area) - long counter along the back wall
+    const counterLength = 30;
+    const counterWidth = 2;
+    const counterHeight = 1.2;
+    const counterY = counterHeight / 2;
+    const counterZ = -15; // Back of restaurant
+    
+    const counter = new Platform(this.engine, {
+      position: new THREE.Vector3(0, counterY, counterZ),
+      size: new THREE.Vector3(counterLength, counterHeight, counterWidth),
+      color: 0x8b4513, // Brown counter top
+    });
+    this.platforms.push(counter);
+
+    // 2. Tables - arranged in dining area
+    // Table dimensions
+    const tableSize = 2.5;
+    const tableHeight = 0.8;
+    const tableY = tableHeight / 2;
+    
+    // Table positions - arranged in rows in the dining area
+    const tableConfigs = [
+      // Front row (closer to entrance)
+      { x: -12, z: 8 },
+      { x: -6, z: 8 },
+      { x: 0, z: 8 },
+      { x: 6, z: 8 },
+      { x: 12, z: 8 },
+      
+      // Middle row
+      { x: -12, z: 2 },
+      { x: -6, z: 2 },
+      { x: 0, z: 2 },
+      { x: 6, z: 2 },
+      { x: 12, z: 2 },
+      
+      // Back row (near counter)
+      { x: -12, z: -4 },
+      { x: -6, z: -4 },
+      { x: 0, z: -4 },
+      { x: 6, z: -4 },
+      { x: 12, z: -4 },
+      
+      // Side tables
+      { x: -18, z: 5 },
+      { x: 18, z: 5 },
+      { x: -18, z: -1 },
+      { x: 18, z: -1 },
     ];
 
-    for (const config of platformConfigs) {
-      const platform = new Platform(this.engine, {
-        position: new THREE.Vector3(config.x, config.y, config.z),
-        size: new THREE.Vector3(config.w, config.h, config.d),
-        color: config.color,
+    for (const tablePos of tableConfigs) {
+      const table = new Platform(this.engine, {
+        position: new THREE.Vector3(tablePos.x, tableY, tablePos.z),
+        size: new THREE.Vector3(tableSize, tableHeight, tableSize),
+        color: 0x654321, // Dark brown table color
       });
-      this.platforms.push(platform);
+      this.platforms.push(table);
     }
   }
 
   private createIngredients(): void {
-    // Define ingredient spawn positions (on top of platforms)
+    // Ingredients spawn on the counter (kitchen/prep area)
+    const counterY = 1.2; // Counter top height
+    const counterZ = -15; // Counter position
+    const ingredientHeight = 0.3; // Height offset for ingredients
+    
+    // Spread ingredients along the counter
     const ingredientSpawns = [
-      { x: 5, y: 1.75, z: 0, type: IngredientType.LETTUCE },
-      { x: 10, y: 2.75, z: 5, type: IngredientType.BACON },
-      { x: 0, y: 2.25, z: -8, type: IngredientType.CHEESE },
-      { x: -8, y: 3.25, z: -5, type: IngredientType.TOMATO },
-      { x: -5, y: 1.75, z: 8, type: IngredientType.PICKLE },
-      { x: 8, y: 3.75, z: -8, type: IngredientType.ONION },
-      { x: 15, y: 2.25, z: -10, type: IngredientType.LETTUCE },
-      { x: -15, y: 2.75, z: 10, type: IngredientType.BACON },
-      { x: -12, y: 3.75, z: -12, type: IngredientType.CHEESE },
-      { x: 18, y: 3.25, z: 8, type: IngredientType.TOMATO },
-      { x: 20, y: 1.75, z: 15, type: IngredientType.PICKLE },
-      { x: -18, y: 2.25, z: -8, type: IngredientType.ONION },
-      { x: 12, y: 4.75, z: -15, type: IngredientType.LETTUCE },
-      { x: -10, y: 1.75, z: 15, type: IngredientType.BACON },
-      { x: 25, y: 3.75, z: 0, type: IngredientType.CHEESE },
-      { x: -20, y: 3.25, z: 5, type: IngredientType.TOMATO },
-      { x: 8, y: 2.75, z: 20, type: IngredientType.PICKLE },
-      { x: -8, y: 4.25, z: -18, type: IngredientType.ONION },
-      { x: 0, y: 2.75, z: 22, type: IngredientType.LETTUCE },
-      { x: 15, y: 1.75, z: -20, type: IngredientType.BACON },
+      { x: -12, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.LETTUCE },
+      { x: -9, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.BACON },
+      { x: -6, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.CHEESE },
+      { x: -3, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.TOMATO },
+      { x: 0, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.PICKLE },
+      { x: 3, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.ONION },
+      { x: 6, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.LETTUCE },
+      { x: 9, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.BACON },
+      { x: 12, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.CHEESE },
+      // Additional ingredients for variety
+      { x: -10, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.TOMATO },
+      { x: -7, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.PICKLE },
+      { x: -4, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.ONION },
+      { x: -1, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.LETTUCE },
+      { x: 2, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.BACON },
+      { x: 5, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.CHEESE },
+      { x: 8, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.TOMATO },
+      { x: 11, y: counterY + ingredientHeight, z: counterZ, type: IngredientType.PICKLE },
     ];
 
     for (const spawn of ingredientSpawns) {
@@ -142,39 +177,94 @@ export class PlatformerGame implements Game {
   }
 
   private createCustomers(): void {
-    // Define customer positions and their orders
+    // Customers sit at tables in the dining area
+    const tableY = 0.8; // Table top height
+    const customerHeight = 1.0; // Customer standing on table
+    
+    // Define customer positions at tables and their orders
     const customerConfigs = [
+      // Front row tables
       {
-        x: 5, y: 1.75, z: 0,
+        x: -12, y: tableY + customerHeight, z: 8,
         order: [IngredientType.LETTUCE, IngredientType.TOMATO, IngredientType.CHEESE]
       },
       {
-        x: -8, y: 3.25, z: -5,
+        x: -6, y: tableY + customerHeight, z: 8,
         order: [IngredientType.BACON, IngredientType.CHEESE]
       },
       {
-        x: 15, y: 2.25, z: -10,
+        x: 0, y: tableY + customerHeight, z: 8,
         order: [IngredientType.PICKLE, IngredientType.ONION, IngredientType.TOMATO]
       },
       {
-        x: -15, y: 2.75, z: 10,
+        x: 6, y: tableY + customerHeight, z: 8,
         order: [IngredientType.CHEESE, IngredientType.BACON, IngredientType.LETTUCE]
       },
       {
-        x: 25, y: 3.75, z: 0,
+        x: 12, y: tableY + customerHeight, z: 8,
         order: [IngredientType.TOMATO, IngredientType.PICKLE]
       },
+      
+      // Middle row tables
       {
-        x: -20, y: 3.25, z: 5,
+        x: -12, y: tableY + customerHeight, z: 2,
         order: [IngredientType.ONION, IngredientType.CHEESE, IngredientType.BACON, IngredientType.LETTUCE]
       },
       {
-        x: 0, y: 2.75, z: 22,
+        x: -6, y: tableY + customerHeight, z: 2,
         order: [IngredientType.LETTUCE, IngredientType.TOMATO]
       },
       {
-        x: -25, y: 1.5, z: -2,
+        x: 0, y: tableY + customerHeight, z: 2,
         order: [IngredientType.PICKLE, IngredientType.ONION]
+      },
+      {
+        x: 6, y: tableY + customerHeight, z: 2,
+        order: [IngredientType.BACON, IngredientType.CHEESE, IngredientType.TOMATO]
+      },
+      {
+        x: 12, y: tableY + customerHeight, z: 2,
+        order: [IngredientType.CHEESE, IngredientType.LETTUCE]
+      },
+      
+      // Back row tables (near counter)
+      {
+        x: -12, y: tableY + customerHeight, z: -4,
+        order: [IngredientType.TOMATO, IngredientType.PICKLE, IngredientType.ONION]
+      },
+      {
+        x: -6, y: tableY + customerHeight, z: -4,
+        order: [IngredientType.BACON, IngredientType.CHEESE]
+      },
+      {
+        x: 0, y: tableY + customerHeight, z: -4,
+        order: [IngredientType.LETTUCE, IngredientType.TOMATO, IngredientType.CHEESE, IngredientType.BACON]
+      },
+      {
+        x: 6, y: tableY + customerHeight, z: -4,
+        order: [IngredientType.PICKLE, IngredientType.ONION]
+      },
+      {
+        x: 12, y: tableY + customerHeight, z: -4,
+        order: [IngredientType.CHEESE, IngredientType.BACON, IngredientType.LETTUCE]
+      },
+      
+      // Side tables
+      {
+        x: -18, y: tableY + customerHeight, z: 5,
+        order: [IngredientType.TOMATO, IngredientType.CHEESE]
+      },
+      {
+        x: 18, y: tableY + customerHeight, z: 5,
+        order: [IngredientType.ONION, IngredientType.PICKLE, IngredientType.LETTUCE]
+      },
+      {
+        x: -18, y: tableY + customerHeight, z: -1,
+        order: [IngredientType.BACON, IngredientType.CHEESE, IngredientType.TOMATO]
+      },
+      {
+        x: 18, y: tableY + customerHeight, z: -1,
+        order: [IngredientType.LETTUCE, IngredientType.PICKLE]
       },
     ];
 
