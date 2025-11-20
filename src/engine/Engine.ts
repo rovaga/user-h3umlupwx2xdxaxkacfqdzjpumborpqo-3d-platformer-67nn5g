@@ -26,8 +26,14 @@ export class Engine {
   private game: Game | null = null;
   private lastTime: number = 0;
   private animationId: number | null = null;
+  private canvas: HTMLCanvasElement;
+  private config: EngineConfig;
+  private isContextLost: boolean = false;
 
   constructor(config: EngineConfig) {
+    this.config = config;
+    this.canvas = config.canvas;
+
     // Scene setup
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
@@ -54,6 +60,9 @@ export class Engine {
       this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     }
 
+    // WebGL context loss handling
+    this.setupContextLossHandling();
+
     // Input setup
     this.input = new Input(config.canvas);
     this.mobileInput = new MobileInput();
@@ -65,6 +74,33 @@ export class Engine {
     window.addEventListener('resize', this.handleResize.bind(this));
 
     console.log('[Engine] Initialized');
+  }
+
+  /**
+   * Setup WebGL context loss and restoration handling.
+   */
+  private setupContextLossHandling(): void {
+    const gl = this.renderer.getContext();
+    
+    if (gl) {
+      gl.canvas.addEventListener('webglcontextlost', (event) => {
+        event.preventDefault();
+        this.isContextLost = true;
+        console.warn('[Engine] WebGL context lost');
+      });
+
+      gl.canvas.addEventListener('webglcontextrestored', () => {
+        this.isContextLost = false;
+        console.log('[Engine] WebGL context restored');
+        // Reinitialize renderer settings
+        this.renderer.setSize(window.innerWidth, window.innerHeight);
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        if (this.config.enableShadows ?? true) {
+          this.renderer.shadowMap.enabled = true;
+          this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        }
+      });
+    }
   }
 
   /**
@@ -89,6 +125,18 @@ export class Engine {
   private animate = (time: number): void => {
     this.animationId = requestAnimationFrame(this.animate);
 
+    // Skip rendering if context is lost
+    if (this.isContextLost) {
+      return;
+    }
+
+    // Check if renderer context is still valid
+    const gl = this.renderer.getContext();
+    if (!gl || gl.isContextLost()) {
+      this.isContextLost = true;
+      return;
+    }
+
     // Calculate delta time in seconds
     const deltaTime = this.lastTime ? (time - this.lastTime) / 1000 : 0;
     this.lastTime = time;
@@ -101,8 +149,28 @@ export class Engine {
     // Reset mouse delta after game update
     this.input.resetMouseDelta();
 
+    // Ensure scene background is set (defensive check)
+    if (!this.scene.background) {
+      this.scene.background = new THREE.Color(0x87ceeb);
+    }
+
     // Render
-    this.renderer.render(this.scene, this.camera);
+    try {
+      this.renderer.render(this.scene, this.camera);
+    } catch (error) {
+      // If rendering fails, check for context loss
+      if (gl && gl.isContextLost()) {
+        this.isContextLost = true;
+        console.warn('[Engine] Rendering failed - context lost');
+      } else {
+        console.error('[Engine] Rendering error:', error);
+        // Try to recover by checking context again
+        const currentGl = this.renderer.getContext();
+        if (!currentGl || currentGl.isContextLost()) {
+          this.isContextLost = true;
+        }
+      }
+    }
   };
 
   /**
