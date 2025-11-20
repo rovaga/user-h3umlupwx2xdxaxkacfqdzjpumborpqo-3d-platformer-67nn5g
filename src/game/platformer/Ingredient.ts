@@ -65,6 +65,14 @@ export class Ingredient {
     },
   };
 
+  /**
+   * Get the configuration for an ingredient type.
+   * Useful for creating previews or other visual representations.
+   */
+  static getIngredientConfig(type: IngredientType) {
+    return Ingredient.INGREDIENT_CONFIGS[type];
+  }
+
   constructor(engine: Engine, config: IngredientConfig) {
     this.engine = engine;
     this.type = config.type;

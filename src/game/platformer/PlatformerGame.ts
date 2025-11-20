@@ -256,34 +256,164 @@ export class PlatformerGame implements Game {
     // Handle resize if needed
   }
 
+  private ingredientPreviewScenes: Array<{
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    renderer: THREE.WebGLRenderer;
+    mesh: THREE.Mesh;
+    canvas: HTMLCanvasElement;
+  }> = [];
+  private previewAnimationId: number | null = null;
+
   private updateOrderUI(customer: Customer): void {
     const orderElement = document.getElementById('customer-order');
     const ingredientsElement = document.getElementById('order-ingredients');
     
     if (!orderElement || !ingredientsElement) return;
 
+    // Clean up previous preview scenes
+    this.cleanupIngredientPreviews();
+
     const order = customer.getOrder();
     ingredientsElement.innerHTML = '';
 
-    const ingredientColors: Record<IngredientType, string> = {
-      [IngredientType.LETTUCE]: '#90ee90',
-      [IngredientType.BACON]: '#cd5c5c',
-      [IngredientType.CHEESE]: '#ffd700',
-      [IngredientType.TOMATO]: '#ff6347',
-      [IngredientType.PICKLE]: '#32cd32',
-      [IngredientType.ONION]: '#fff8dc',
-    };
-
-    order.ingredients.forEach((ingredient) => {
+    order.ingredients.forEach((ingredientType) => {
       const item = document.createElement('div');
       item.className = 'ingredient-item';
-      item.textContent = ingredient;
-      item.style.backgroundColor = ingredientColors[ingredient] || '#ffffff';
-      item.style.color = '#000';
+      
+      // Create container for 3D preview and text
+      const previewContainer = document.createElement('div');
+      previewContainer.className = 'ingredient-preview-container';
+      
+      // Create canvas for 3D preview
+      const canvas = document.createElement('canvas');
+      canvas.className = 'ingredient-preview-canvas';
+      canvas.width = 80;
+      canvas.height = 80;
+      
+      // Create 3D preview scene
+      const previewScene = this.createIngredientPreview(ingredientType, canvas);
+      this.ingredientPreviewScenes.push(previewScene);
+      
+      // Add canvas to container
+      previewContainer.appendChild(canvas);
+      
+      // Add text label below the preview
+      const label = document.createElement('div');
+      label.className = 'ingredient-label';
+      label.textContent = ingredientType;
+      previewContainer.appendChild(label);
+      
+      item.appendChild(previewContainer);
       ingredientsElement.appendChild(item);
     });
 
     orderElement.classList.add('show');
+    
+    // Start animation loop for previews
+    this.animateIngredientPreviews();
+  }
+
+  private createIngredientPreview(ingredientType: IngredientType, canvas: HTMLCanvasElement): {
+    scene: THREE.Scene;
+    camera: THREE.PerspectiveCamera;
+    renderer: THREE.WebGLRenderer;
+    mesh: THREE.Mesh;
+    canvas: HTMLCanvasElement;
+  } {
+    // Create a small scene for the preview
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x2a2a2a);
+    
+    // Camera positioned to view the ingredient
+    const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 10);
+    camera.position.set(0.8, 0.6, 0.8);
+    camera.lookAt(0, 0, 0);
+    
+    // Renderer for the preview canvas
+    const renderer = new THREE.WebGLRenderer({ 
+      canvas,
+      antialias: true,
+      alpha: true
+    });
+    renderer.setSize(80, 80);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // Lighting for the preview
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    
+    const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    directionalLight.position.set(1, 1, 1);
+    scene.add(directionalLight);
+    
+    // Create the ingredient mesh using the same config as Ingredient class
+    const config = Ingredient.getIngredientConfig(ingredientType);
+    const geometry = config.geometry();
+    const material = new THREE.MeshStandardMaterial({
+      color: config.color,
+      roughness: 0.6,
+      metalness: ingredientType === IngredientType.CHEESE ? 0.3 : 0,
+    });
+    
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
+    
+    // Initial render
+    renderer.render(scene, camera);
+    
+    return { scene, camera, renderer, mesh, canvas };
+  }
+
+  private animateIngredientPreviews(): void {
+    // Stop any existing animation loop
+    if (this.previewAnimationId !== null) {
+      cancelAnimationFrame(this.previewAnimationId);
+      this.previewAnimationId = null;
+    }
+    
+    const animate = () => {
+      if (this.ingredientPreviewScenes.length === 0) {
+        this.previewAnimationId = null;
+        return;
+      }
+      
+      this.ingredientPreviewScenes.forEach((preview) => {
+        // Rotate the mesh
+        preview.mesh.rotation.y += 0.02;
+        preview.renderer.render(preview.scene, preview.camera);
+      });
+      
+      this.previewAnimationId = requestAnimationFrame(animate);
+    };
+    
+    this.previewAnimationId = requestAnimationFrame(animate);
+  }
+
+  private cleanupIngredientPreviews(): void {
+    // Stop animation loop
+    if (this.previewAnimationId !== null) {
+      cancelAnimationFrame(this.previewAnimationId);
+      this.previewAnimationId = null;
+    }
+    
+    this.ingredientPreviewScenes.forEach((preview) => {
+      // Dispose of geometries and materials
+      preview.mesh.geometry.dispose();
+      if (preview.mesh.material instanceof THREE.Material) {
+        preview.mesh.material.dispose();
+      }
+      
+      // Dispose of renderer
+      preview.renderer.dispose();
+      
+      // Remove canvas from DOM if it exists
+      if (preview.canvas.parentNode) {
+        preview.canvas.parentNode.removeChild(preview.canvas);
+      }
+    });
+    
+    this.ingredientPreviewScenes = [];
   }
 
   private hideOrderUI(): void {
@@ -291,10 +421,13 @@ export class PlatformerGame implements Game {
     if (orderElement) {
       orderElement.classList.remove('show');
     }
+    // Clean up preview scenes when hiding UI
+    this.cleanupIngredientPreviews();
   }
 
   dispose(): void {
     this.hideOrderUI();
+    this.cleanupIngredientPreviews();
     this.player.dispose();
     for (const platform of this.platforms) {
       platform.dispose();
