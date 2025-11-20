@@ -32,11 +32,23 @@ export class Ingredient {
   private floatSpeed: number = 0.001;
 
   // Ingredient properties
+  // Optimize geometry complexity for mobile devices
+  private static getGeometryComplexity(): { cylinderSegments: number; sphereSegments: number } {
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window);
+    return {
+      cylinderSegments: isMobile ? 6 : 8,
+      sphereSegments: isMobile ? 6 : 8,
+    };
+  }
+
   private static readonly INGREDIENT_CONFIGS = {
     [IngredientType.LETTUCE]: {
       color: 0x90ee90,
       height: 0.15,
-      geometry: () => new THREE.CylinderGeometry(0.45, 0.5, 0.15, 8),
+      geometry: () => {
+        const { cylinderSegments } = Ingredient.getGeometryComplexity();
+        return new THREE.CylinderGeometry(0.45, 0.5, 0.15, cylinderSegments);
+      },
     },
     [IngredientType.BACON]: {
       color: 0xcd5c5c,
@@ -51,17 +63,26 @@ export class Ingredient {
     [IngredientType.TOMATO]: {
       color: 0xff6347,
       height: 0.2,
-      geometry: () => new THREE.SphereGeometry(0.25, 8, 8),
+      geometry: () => {
+        const { sphereSegments } = Ingredient.getGeometryComplexity();
+        return new THREE.SphereGeometry(0.25, sphereSegments, sphereSegments);
+      },
     },
     [IngredientType.PICKLE]: {
       color: 0x32cd32,
       height: 0.3,
-      geometry: () => new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8),
+      geometry: () => {
+        const { cylinderSegments } = Ingredient.getGeometryComplexity();
+        return new THREE.CylinderGeometry(0.15, 0.15, 0.3, cylinderSegments);
+      },
     },
     [IngredientType.ONION]: {
       color: 0xfff8dc,
       height: 0.2,
-      geometry: () => new THREE.SphereGeometry(0.2, 8, 8),
+      geometry: () => {
+        const { sphereSegments } = Ingredient.getGeometryComplexity();
+        return new THREE.SphereGeometry(0.2, sphereSegments, sphereSegments);
+      },
     },
   };
 
@@ -88,8 +109,10 @@ export class Ingredient {
 
     this.mesh = new THREE.Mesh(geometry, material);
     this.mesh.position.copy(this.position);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    // Disable shadows on mobile for better performance
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window);
+    this.mesh.castShadow = !isMobile;
+    this.mesh.receiveShadow = !isMobile;
 
     // Random float offset for variation
     this.floatOffset = Math.random() * Math.PI * 2;
@@ -146,7 +169,7 @@ export class Ingredient {
     });
 
     const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
+    // Shadow casting will be handled in Player.addIngredient
     return mesh;
   }
 

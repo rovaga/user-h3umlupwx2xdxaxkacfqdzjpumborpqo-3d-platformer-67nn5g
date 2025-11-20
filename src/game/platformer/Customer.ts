@@ -30,20 +30,25 @@ export class Customer {
     // Create customer mesh (simple person representation)
     this.mesh = new THREE.Group();
     
+    // Optimize geometry complexity for mobile
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window);
+    const cylinderSegments = isMobile ? 6 : 8;
+    const sphereSegments = isMobile ? 6 : 8;
+    
     // Body (cylinder)
-    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, 8);
+    const bodyGeometry = new THREE.CylinderGeometry(0.3, 0.3, 0.8, cylinderSegments);
     const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0x4169e1 });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 0.4;
-    body.castShadow = true;
+    body.castShadow = !isMobile; // Disable shadow casting on mobile
     this.mesh.add(body);
 
     // Head (sphere)
-    const headGeometry = new THREE.SphereGeometry(0.25, 8, 8);
+    const headGeometry = new THREE.SphereGeometry(0.25, sphereSegments, sphereSegments);
     const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffdbac });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1.0;
-    head.castShadow = true;
+    head.castShadow = !isMobile; // Disable shadow casting on mobile
     this.mesh.add(head);
 
     // Create order display (floating text)

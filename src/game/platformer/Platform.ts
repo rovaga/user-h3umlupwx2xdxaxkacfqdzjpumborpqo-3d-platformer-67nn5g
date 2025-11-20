@@ -54,8 +54,10 @@ export class Platform {
       });
       this.mesh = new THREE.Mesh(geometry, material);
       this.mesh.position.copy(config.position);
-      this.mesh.castShadow = true;
-      this.mesh.receiveShadow = true;
+      // Disable shadows on mobile for better performance
+      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window);
+      this.mesh.castShadow = !isMobile;
+      this.mesh.receiveShadow = !isMobile;
       engine.scene.add(this.mesh);
     }
   }

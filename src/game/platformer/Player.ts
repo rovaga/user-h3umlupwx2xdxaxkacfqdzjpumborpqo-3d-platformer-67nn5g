@@ -46,30 +46,35 @@ export class Player {
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
+    // Optimize geometry complexity for mobile
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+    const cylinderSegments = isMobile ? 8 : 16; // Reduce segments on mobile
+    const coneSegments = isMobile ? 6 : 8;
+    
     // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
+    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, cylinderSegments);
     const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xd4a574, // Golden brown bun color
       roughness: 0.7 
     });
     this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
     this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
+    this.bunBottom.castShadow = !isMobile; // Disable shadow casting on mobile
     this.mesh.add(this.bunBottom);
 
     // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
+    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, cylinderSegments);
     const bunTopMaterial = new THREE.MeshStandardMaterial({ 
       color: 0xd4a574,
       roughness: 0.7 
     });
     this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
     this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
+    this.bunTop.castShadow = !isMobile; // Disable shadow casting on mobile
     this.mesh.add(this.bunTop);
 
     // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
+    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, coneSegments);
     const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     this.indicator.rotation.x = Math.PI / 2;
@@ -235,6 +240,10 @@ export class Player {
   }
 
   addIngredient(ingredientMesh: THREE.Mesh, height: number, ingredientType: IngredientType): void {
+    // Disable shadow casting on mobile for better performance
+    const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || 'ontouchstart' in window);
+    ingredientMesh.castShadow = !isMobile;
+    
     // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
     ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
     ingredientMesh.position.x = 0;

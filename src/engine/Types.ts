@@ -55,6 +55,7 @@ export interface EngineConfig {
   enableShadows?: boolean;
   shadowMapSize?: number;
   antialias?: boolean;
+  maxPixelRatio?: number; // Maximum pixel ratio (useful for mobile optimization)
 }
 
 /**

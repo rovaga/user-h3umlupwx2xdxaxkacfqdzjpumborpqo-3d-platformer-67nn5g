@@ -50,6 +50,7 @@ export class PlatformerGame implements Game {
   }
 
   private createGround(): void {
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
     const groundGeometry = new THREE.BoxGeometry(100, 1, 100);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0x4a7c59,
@@ -57,7 +58,7 @@ export class PlatformerGame implements Game {
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.position.y = -0.5;
-    ground.receiveShadow = true;
+    ground.receiveShadow = !isMobile; // Disable shadow receiving on mobile
     this.engine.scene.add(ground);
 
     // Add ground as a platform for collision
@@ -350,16 +351,18 @@ export class PlatformerGame implements Game {
       camera.lookAt(0, 0, 0);
       
       // Renderer for the preview canvas
-      // Use preserveDrawingBuffer to avoid context issues
+      // Optimize for mobile: disable antialiasing, limit pixel ratio
+      const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
       const renderer = new THREE.WebGLRenderer({ 
         canvas,
-        antialias: true,
+        antialias: false, // Disable antialiasing for better performance
         alpha: true,
         preserveDrawingBuffer: false,
         powerPreference: "low-power"
       });
       renderer.setSize(80, 80);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // Limit pixel ratio to avoid issues
+      // Limit pixel ratio more aggressively on mobile
+      renderer.setPixelRatio(isMobile ? 1 : Math.min(window.devicePixelRatio, 2));
       
       // Lighting for the preview
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -419,11 +422,24 @@ export class PlatformerGame implements Game {
       this.previewAnimationId = null;
     }
     
-    const animate = () => {
+    // Throttle preview animations on mobile (render less frequently)
+    const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+    let lastPreviewTime = 0;
+    const previewFrameInterval = isMobile ? 1000 / 15 : 1000 / 30; // 15 FPS on mobile, 30 FPS on desktop
+    
+    const animate = (time: number) => {
       if (this.ingredientPreviewScenes.length === 0) {
         this.previewAnimationId = null;
         return;
       }
+      
+      // Throttle rendering for better performance
+      const elapsed = time - lastPreviewTime;
+      if (elapsed < previewFrameInterval) {
+        this.previewAnimationId = requestAnimationFrame(animate);
+        return;
+      }
+      lastPreviewTime = time - (elapsed % previewFrameInterval);
       
       this.ingredientPreviewScenes.forEach((preview) => {
         // Skip null previews (failed to create)
@@ -432,9 +448,9 @@ export class PlatformerGame implements Game {
         }
         
         try {
-          // Rotate the mesh
+          // Rotate the mesh (slower rotation on mobile)
           if (preview.mesh) {
-            preview.mesh.rotation.y += 0.02;
+            preview.mesh.rotation.y += isMobile ? 0.01 : 0.02;
           }
           
           // Check if renderer context is still valid

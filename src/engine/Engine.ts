@@ -29,15 +29,28 @@ export class Engine {
   private canvas: HTMLCanvasElement;
   private config: EngineConfig;
   private isContextLost: boolean = false;
+  private targetFPS: number = 60;
+  private frameInterval: number = 1000 / 60; // 60 FPS default
+  private lastFrameTime: number = 0;
 
   constructor(config: EngineConfig) {
     this.config = config;
     this.canvas = config.canvas;
+    
+    // Limit frame rate on mobile devices to save battery and improve performance
+    const isMobile = config.maxPixelRatio !== undefined;
+    if (isMobile) {
+      this.targetFPS = 30; // Target 30 FPS on mobile
+      this.frameInterval = 1000 / 30;
+    }
 
     // Scene setup
     this.scene = new THREE.Scene();
     this.scene.background = new THREE.Color(0x87ceeb);
-    this.scene.fog = new THREE.Fog(0x87ceeb, 20, 80);
+    // Disable fog on mobile for better performance
+    if (!isMobile) {
+      this.scene.fog = new THREE.Fog(0x87ceeb, 20, 80);
+    }
 
     // Camera setup
     this.camera = new THREE.PerspectiveCamera(
@@ -51,13 +64,20 @@ export class Engine {
     this.renderer = new THREE.WebGLRenderer({
       canvas: config.canvas,
       antialias: config.antialias ?? true,
+      powerPreference: 'high-performance', // Prefer performance over power savings
     });
     this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.renderer.setPixelRatio(window.devicePixelRatio);
+    
+    // Limit pixel ratio for mobile devices to improve performance
+    const pixelRatio = config.maxPixelRatio 
+      ? Math.min(window.devicePixelRatio, config.maxPixelRatio)
+      : window.devicePixelRatio;
+    this.renderer.setPixelRatio(pixelRatio);
 
     if (config.enableShadows ?? true) {
       this.renderer.shadowMap.enabled = true;
-      this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // Use BasicShadowMap on mobile for better performance, PCFSoftShadowMap on desktop
+      this.renderer.shadowMap.type = config.maxPixelRatio ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
     }
 
     // WebGL context loss handling
@@ -94,10 +114,13 @@ export class Engine {
         console.log('[Engine] WebGL context restored');
         // Reinitialize renderer settings
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setPixelRatio(window.devicePixelRatio);
+        const pixelRatio = this.config.maxPixelRatio 
+          ? Math.min(window.devicePixelRatio, this.config.maxPixelRatio)
+          : window.devicePixelRatio;
+        this.renderer.setPixelRatio(pixelRatio);
         if (this.config.enableShadows ?? true) {
           this.renderer.shadowMap.enabled = true;
-          this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+          this.renderer.shadowMap.type = this.config.maxPixelRatio ? THREE.BasicShadowMap : THREE.PCFSoftShadowMap;
         }
       });
     }
@@ -136,6 +159,13 @@ export class Engine {
       this.isContextLost = true;
       return;
     }
+
+    // Frame rate limiting for mobile devices
+    const elapsed = time - this.lastFrameTime;
+    if (elapsed < this.frameInterval) {
+      return; // Skip this frame to maintain target FPS
+    }
+    this.lastFrameTime = time - (elapsed % this.frameInterval);
 
     // Calculate delta time in seconds
     const deltaTime = this.lastTime ? (time - this.lastTime) / 1000 : 0;
@@ -185,6 +215,7 @@ export class Engine {
 
     this.game = game;
     this.lastTime = 0;
+    this.lastFrameTime = 0;
     console.log('[Engine] Starting game');
     this.animate(0);
   }
