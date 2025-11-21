@@ -1,7 +1,7 @@
 /**
- * AI-EDITABLE: Platform Component
+ * AI-EDITABLE: Componente de Plataforma
  *
- * This file defines platforms that the player can stand on.
+ * Este archivo define las plataformas sobre las que el jugador puede pararse.
  */
 
 import * as THREE from 'three';
@@ -27,7 +27,7 @@ export class Platform {
   constructor(engine: Engine, config: PlatformConfig) {
     this.engine = engine;
 
-    // Calculate bounds
+    // Calcular límites
     this.bounds = {
       min: new THREE.Vector3(
         config.position.x - config.size.x / 2,
@@ -41,7 +41,7 @@ export class Platform {
       ),
     };
 
-    // Create mesh if visible
+    // Crear mesh si es visible
     if (config.visible !== false) {
       const geometry = new THREE.BoxGeometry(
         config.size.x,

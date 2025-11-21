@@ -1,8 +1,8 @@
 /**
- * AI-EDITABLE: Player Controller
+ * AI-EDITABLE: Controlador del Jugador
  *
- * This file contains the player character logic including movement,
- * camera controls, jumping, and collision detection.
+ * Este archivo contiene la lógica del personaje del jugador incluyendo movimiento,
+ * controles de cámara, salto y detección de colisiones.
  */
 
 import * as THREE from 'three';
@@ -11,25 +11,25 @@ import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
-  private bunBottom: THREE.Mesh;
-  private bunTop: THREE.Mesh;
-  private indicator: THREE.Mesh;
-  private collectedIngredients: THREE.Mesh[] = [];
-  private ingredientStackHeight: number = 0;
+  private mesh: THREE.Group; // Grupo para contener el cuerpo y suministros
+  private body: THREE.Mesh;
+  private sombrero: THREE.Mesh;
+  private rifle: THREE.Mesh;
+  private collectedSupplies: THREE.Mesh[] = [];
+  private supplyStackHeight: number = 0;
 
-  // Player state
+  // Estado del jugador
   private position: THREE.Vector3;
   private velocity: THREE.Vector3;
   private rotation: number = 0;
   private onGround: boolean = false;
 
-  // Player settings
+  // Configuración del jugador
   private readonly speed = 0.1;
   private readonly jumpForce = 0.4;
   private readonly gravity = -0.015;
 
-  // Camera settings
+  // Configuración de cámara
   private cameraDistance = 8;
   private cameraHeight = 4;
   private cameraRotationY = 0;
@@ -40,42 +40,55 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player group (hamburger)
+    // Crear grupo del jugador (revolucionario mexicano)
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574, // Golden brown bun color
+    // Crear cuerpo del revolucionario (torso)
+    const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x8B4513, // Color café de la ropa del revolucionario
+      roughness: 0.8 
+    });
+    this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    this.body.position.y = 0.6;
+    this.body.castShadow = true;
+    this.mesh.add(this.body);
+
+    // Crear sombrero mexicano
+    const sombreroGeometry = new THREE.CylinderGeometry(0.6, 0.5, 0.15, 16);
+    const sombreroMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x2F4F2F, // Color verde oscuro del sombrero
       roughness: 0.7 
     });
-    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
-    this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
-    this.mesh.add(this.bunBottom);
+    this.sombrero = new THREE.Mesh(sombreroGeometry, sombreroMaterial);
+    this.sombrero.position.y = 1.35;
+    this.sombrero.castShadow = true;
+    this.mesh.add(this.sombrero);
 
-    // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
-    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574,
+    // Crear ala del sombrero
+    const alaGeometry = new THREE.TorusGeometry(0.55, 0.1, 8, 16);
+    const alaMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x2F4F2F,
       roughness: 0.7 
     });
-    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
-    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
-    this.mesh.add(this.bunTop);
+    const ala = new THREE.Mesh(alaGeometry, alaMaterial);
+    ala.rotation.x = Math.PI / 2;
+    ala.position.y = 1.3;
+    ala.castShadow = true;
+    this.mesh.add(ala);
 
-    // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
-    const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
-    this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
-    this.indicator.rotation.x = Math.PI / 2;
-    this.indicator.position.z = 0.6;
-    this.indicator.position.y = 0.25;
-    this.mesh.add(this.indicator);
+    // Crear rifle como indicador de dirección
+    const rifleGeometry = new THREE.BoxGeometry(0.1, 0.1, 1.2);
+    const rifleMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
+    this.rifle = new THREE.Mesh(rifleGeometry, rifleMaterial);
+    this.rifle.rotation.x = Math.PI / 2;
+    this.rifle.position.z = 0.6;
+    this.rifle.position.y = 0.8;
+    this.rifle.castShadow = true;
+    this.mesh.add(this.rifle);
 
-    console.log('[Player] Created as hamburger');
+    console.log('[Player] Creado como revolucionario mexicano');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -93,25 +106,25 @@ export class Player {
 
     const moveDirection = new THREE.Vector3();
 
-    // Get movement input (keyboard or mobile joystick)
+    // Obtener entrada de movimiento (teclado o joystick móvil)
     if (isMobile) {
-      // Mobile joystick input
+      // Entrada de joystick móvil
       const joystick = mobileInput.getJoystickVector();
       moveDirection.x = joystick.x;
       moveDirection.z = joystick.y;
     } else {
-      // Keyboard input
+      // Entrada de teclado
       if (input.isKeyPressed('KeyW')) moveDirection.z += 1;
       if (input.isKeyPressed('KeyS')) moveDirection.z -= 1;
       if (input.isKeyPressed('KeyA')) moveDirection.x -= 1;
       if (input.isKeyPressed('KeyD')) moveDirection.x += 1;
     }
 
-    // Apply movement
+    // Aplicar movimiento
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
 
-      // Calculate movement relative to camera direction
+      // Calcular movimiento relativo a la dirección de la cámara
       const angle = this.cameraRotationY;
       const forward = new THREE.Vector3(-Math.sin(angle), 0, -Math.cos(angle));
       const right = new THREE.Vector3(Math.cos(angle), 0, -Math.sin(angle));
@@ -121,15 +134,15 @@ export class Player {
       worldMoveDirection.addScaledVector(right, moveDirection.x);
       worldMoveDirection.normalize();
 
-      // Move player
+      // Mover jugador
       this.position.x += worldMoveDirection.x * this.speed;
       this.position.z += worldMoveDirection.z * this.speed;
 
-      // Rotate player to face movement direction
+      // Rotar jugador para mirar en dirección del movimiento
       this.rotation = Math.atan2(worldMoveDirection.x, worldMoveDirection.z);
     }
 
-    // Jump (keyboard or mobile button)
+    // Salto (teclado o botón móvil)
     const shouldJump = isMobile
       ? mobileInput.isJumpPressed()
       : input.isKeyPressed('Space');
@@ -139,9 +152,9 @@ export class Player {
       this.onGround = false;
     }
 
-    // Camera control (mouse or touch)
+    // Control de cámara (ratón o touch)
     if (isMobile) {
-      // Mobile touch camera
+      // Cámara táctil móvil
       const touchDelta = mobileInput.getCameraDelta();
       this.cameraRotationY -= touchDelta.x * 0.005;
       this.cameraRotationX -= touchDelta.y * 0.005;
@@ -150,7 +163,7 @@ export class Player {
         Math.min(Math.PI / 3, this.cameraRotationX)
       );
     } else if (input.isPointerLocked()) {
-      // Mouse camera
+      // Cámara con ratón
       const mouseDelta = input.getMouseDelta();
       this.cameraRotationY -= mouseDelta.x * 0.002;
       this.cameraRotationX -= mouseDelta.y * 0.002;
@@ -162,11 +175,11 @@ export class Player {
   }
 
   private applyPhysics(): void {
-    // Apply gravity
+    // Aplicar gravedad
     this.velocity.y += this.gravity;
     this.position.y += this.velocity.y;
 
-    // Reset to spawn if fallen off the world
+    // Reiniciar a spawn si cae del mundo
     if (this.position.y < -10) {
       this.position.set(0, 5, 0);
       this.velocity.set(0, 0, 0);
@@ -178,23 +191,23 @@ export class Player {
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
+      const playerBottom = this.position.y - 0.6; // Ajustado para altura del cuerpo
       const playerRadius = 0.5;
 
-      // Check horizontal overlap
+      // Verificar superposición horizontal
       if (
         this.position.x + playerRadius > bounds.min.x &&
         this.position.x - playerRadius < bounds.max.x &&
         this.position.z + playerRadius > bounds.min.z &&
         this.position.z - playerRadius < bounds.max.z
       ) {
-        // Check vertical collision (landing on platform)
+        // Verificar colisión vertical (aterrizar en plataforma)
         if (
           playerBottom <= bounds.max.y &&
           playerBottom >= bounds.min.y &&
           this.velocity.y <= 0
         ) {
-          this.position.y = bounds.max.y + 0.3;
+          this.position.y = bounds.max.y + 0.6;
           this.velocity.y = 0;
           this.onGround = true;
         }
@@ -224,7 +237,7 @@ export class Player {
 
     camera.position.copy(this.position).add(cameraOffset);
 
-    // Prevent camera from going below ground
+    // Prevenir que la cámara vaya por debajo del suelo
     if (camera.position.y < 0.5) {
       camera.position.y = 0.5;
     }
@@ -232,18 +245,14 @@ export class Player {
     camera.lookAt(this.position);
   }
 
-  addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
-    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
-    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
-    this.mesh.add(ingredientMesh);
-    this.collectedIngredients.push(ingredientMesh);
-    this.ingredientStackHeight += height;
+  addSupply(supplyMesh: THREE.Mesh, height: number): void {
+    // Posicionar suministro en la parte superior de la pila actual
+    supplyMesh.position.y = this.supplyStackHeight + height / 2 + 1.2;
+    this.mesh.add(supplyMesh);
+    this.collectedSupplies.push(supplyMesh);
+    this.supplyStackHeight += height;
     
-    // Move top bun and indicator higher to sit on top of ingredients
-    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
-    this.indicator.position.y = this.ingredientStackHeight + 0.15;
-    
-    console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
+    console.log(`[Player] Suministro agregado. Altura de pila: ${this.supplyStackHeight}`);
   }
 
   getPosition(): THREE.Vector3 {
@@ -256,19 +265,19 @@ export class Player {
 
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.bunBottom.geometry.dispose();
-    (this.bunBottom.material as THREE.Material).dispose();
-    this.bunTop.geometry.dispose();
-    (this.bunTop.material as THREE.Material).dispose();
-    this.indicator.geometry.dispose();
-    (this.indicator.material as THREE.Material).dispose();
+    this.body.geometry.dispose();
+    (this.body.material as THREE.Material).dispose();
+    this.sombrero.geometry.dispose();
+    (this.sombrero.material as THREE.Material).dispose();
+    this.rifle.geometry.dispose();
+    (this.rifle.material as THREE.Material).dispose();
     
-    // Dispose collected ingredients
-    for (const ingredient of this.collectedIngredients) {
-      ingredient.geometry.dispose();
-      (ingredient.material as THREE.Material).dispose();
+    // Liberar suministros recolectados
+    for (const supply of this.collectedSupplies) {
+      supply.geometry.dispose();
+      (supply.material as THREE.Material).dispose();
     }
     
-    console.log('[Player] Disposed');
+    console.log('[Player] Liberado');
   }
 }

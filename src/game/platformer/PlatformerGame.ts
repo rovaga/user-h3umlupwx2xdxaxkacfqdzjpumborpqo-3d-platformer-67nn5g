@@ -1,8 +1,8 @@
 /**
- * AI-EDITABLE: Platformer Game Implementation
+ * AI-EDITABLE: Implementación del Juego de la Revolución Mexicana
  *
- * This file contains the main platformer game logic.
- * Feel free to modify, extend, or completely rewrite this file.
+ * Este archivo contiene la lógica principal del juego.
+ * Siéntete libre de modificar, extender o reescribir completamente este archivo.
  */
 
 import * as THREE from 'three';
@@ -16,7 +16,7 @@ export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
-  private ingredients: Ingredient[] = [];
+  private supplies: Ingredient[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -24,25 +24,25 @@ export class PlatformerGame implements Game {
     // Setup lighting
     engine.createDefaultLighting();
 
-    // Create ground
+    // Crear terreno
     this.createGround();
 
-    // Create platforms
+    // Crear plataformas
     this.createPlatforms();
 
-    // Create player
+    // Crear jugador
     this.player = new Player(engine);
 
-    // Create ingredients
-    this.createIngredients();
+    // Crear suministros
+    this.createSupplies();
 
-    console.log('[PlatformerGame] Initialized');
+    console.log('[PlatformerGame] Inicializado');
   }
 
   private createGround(): void {
     const groundGeometry = new THREE.BoxGeometry(100, 1, 100);
     const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a7c59,
+      color: 0x8B4513, // Color tierra mexicana (café rojizo)
       roughness: 0.8,
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -50,40 +50,41 @@ export class PlatformerGame implements Game {
     ground.receiveShadow = true;
     this.engine.scene.add(ground);
 
-    // Add ground as a platform for collision
+    // Agregar terreno como plataforma para colisión
     this.platforms.push(
       new Platform(this.engine, {
         position: new THREE.Vector3(0, -0.5, 0),
         size: new THREE.Vector3(100, 1, 100),
-        color: 0x4a7c59,
-        visible: false, // Ground mesh is already added
+        color: 0x8B4513,
+        visible: false, // El mesh del terreno ya está agregado
       })
     );
   }
 
   private createPlatforms(): void {
+    // Crear plataformas que simulan edificios y estructuras de la época revolucionaria
     const platformConfigs = [
-      { x: 5, y: 1, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: 10, y: 2, z: 5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 0, y: 1.5, z: -8, w: 6, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -8, y: 2.5, z: -5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -5, y: 1, z: 8, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: 8, y: 3, z: -8, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 15, y: 1.5, z: -10, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: -15, y: 2, z: 10, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -12, y: 3, z: -12, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: 18, y: 2.5, z: 8, w: 5, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 20, y: 1, z: 15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -18, y: 1.5, z: -8, w: 5, h: 0.5, d: 5, color: 0xa0522d },
-      { x: 12, y: 4, z: -15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -10, y: 1, z: 15, w: 6, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 25, y: 3, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -20, y: 2.5, z: 5, w: 5, h: 0.5, d: 5, color: 0xa0522d },
-      { x: 8, y: 2, z: 20, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -8, y: 3.5, z: -18, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 0, y: 2, z: 22, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: 15, y: 1, z: -20, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -25, y: 1.5, z: -2, w: 5, h: 0.5, d: 4, color: 0x8b4513 },
+      { x: 5, y: 1, z: 0, w: 4, h: 0.5, d: 4, color: 0x8B4513 }, // Adobe
+      { x: 10, y: 2, z: 5, w: 4, h: 0.5, d: 4, color: 0xA0522D }, // Ladrillo
+      { x: 0, y: 1.5, z: -8, w: 6, h: 0.5, d: 4, color: 0x8B4513 },
+      { x: -8, y: 2.5, z: -5, w: 4, h: 0.5, d: 4, color: 0xA0522D },
+      { x: -5, y: 1, z: 8, w: 5, h: 0.5, d: 5, color: 0x8B4513 },
+      { x: 8, y: 3, z: -8, w: 4, h: 0.5, d: 4, color: 0xA0522D },
+      { x: 15, y: 1.5, z: -10, w: 5, h: 0.5, d: 5, color: 0x8B4513 },
+      { x: -15, y: 2, z: 10, w: 4, h: 0.5, d: 4, color: 0xA0522D },
+      { x: -12, y: 3, z: -12, w: 4, h: 0.5, d: 4, color: 0x8B4513 },
+      { x: 18, y: 2.5, z: 8, w: 5, h: 0.5, d: 4, color: 0xA0522D },
+      { x: 20, y: 1, z: 15, w: 4, h: 0.5, d: 4, color: 0x8B4513 },
+      { x: -18, y: 1.5, z: -8, w: 5, h: 0.5, d: 5, color: 0xA0522D },
+      { x: 12, y: 4, z: -15, w: 4, h: 0.5, d: 4, color: 0x8B4513 },
+      { x: -10, y: 1, z: 15, w: 6, h: 0.5, d: 4, color: 0xA0522D },
+      { x: 25, y: 3, z: 0, w: 4, h: 0.5, d: 4, color: 0x8B4513 },
+      { x: -20, y: 2.5, z: 5, w: 5, h: 0.5, d: 5, color: 0xA0522D },
+      { x: 8, y: 2, z: 20, w: 4, h: 0.5, d: 4, color: 0x8B4513 },
+      { x: -8, y: 3.5, z: -18, w: 4, h: 0.5, d: 4, color: 0xA0522D },
+      { x: 0, y: 2, z: 22, w: 5, h: 0.5, d: 5, color: 0x8B4513 },
+      { x: 15, y: 1, z: -20, w: 4, h: 0.5, d: 4, color: 0xA0522D },
+      { x: -25, y: 1.5, z: -2, w: 5, h: 0.5, d: 4, color: 0x8B4513 },
     ];
 
     for (const config of platformConfigs) {
@@ -96,57 +97,57 @@ export class PlatformerGame implements Game {
     }
   }
 
-  private createIngredients(): void {
-    // Define ingredient spawn positions (on top of platforms)
-    const ingredientSpawns = [
-      { x: 5, y: 1.75, z: 0, type: IngredientType.LETTUCE },
-      { x: 10, y: 2.75, z: 5, type: IngredientType.BACON },
-      { x: 0, y: 2.25, z: -8, type: IngredientType.CHEESE },
-      { x: -8, y: 3.25, z: -5, type: IngredientType.TOMATO },
-      { x: -5, y: 1.75, z: 8, type: IngredientType.PICKLE },
-      { x: 8, y: 3.75, z: -8, type: IngredientType.ONION },
-      { x: 15, y: 2.25, z: -10, type: IngredientType.LETTUCE },
-      { x: -15, y: 2.75, z: 10, type: IngredientType.BACON },
-      { x: -12, y: 3.75, z: -12, type: IngredientType.CHEESE },
-      { x: 18, y: 3.25, z: 8, type: IngredientType.TOMATO },
-      { x: 20, y: 1.75, z: 15, type: IngredientType.PICKLE },
-      { x: -18, y: 2.25, z: -8, type: IngredientType.ONION },
-      { x: 12, y: 4.75, z: -15, type: IngredientType.LETTUCE },
-      { x: -10, y: 1.75, z: 15, type: IngredientType.BACON },
-      { x: 25, y: 3.75, z: 0, type: IngredientType.CHEESE },
-      { x: -20, y: 3.25, z: 5, type: IngredientType.TOMATO },
-      { x: 8, y: 2.75, z: 20, type: IngredientType.PICKLE },
-      { x: -8, y: 4.25, z: -18, type: IngredientType.ONION },
-      { x: 0, y: 2.75, z: 22, type: IngredientType.LETTUCE },
-      { x: 15, y: 1.75, z: -20, type: IngredientType.BACON },
+  private createSupplies(): void {
+    // Definir posiciones de aparición de suministros (sobre las plataformas)
+    const supplySpawns = [
+      { x: 5, y: 1.75, z: 0, type: IngredientType.BALA },
+      { x: 10, y: 2.75, z: 5, type: IngredientType.MUNICION },
+      { x: 0, y: 2.25, z: -8, type: IngredientType.DOCUMENTO },
+      { x: -8, y: 3.25, z: -5, type: IngredientType.BANDERA },
+      { x: -5, y: 1.75, z: 8, type: IngredientType.MEDALLA },
+      { x: 8, y: 3.75, z: -8, type: IngredientType.CARTUCHO },
+      { x: 15, y: 2.25, z: -10, type: IngredientType.BALA },
+      { x: -15, y: 2.75, z: 10, type: IngredientType.MUNICION },
+      { x: -12, y: 3.75, z: -12, type: IngredientType.DOCUMENTO },
+      { x: 18, y: 3.25, z: 8, type: IngredientType.BANDERA },
+      { x: 20, y: 1.75, z: 15, type: IngredientType.MEDALLA },
+      { x: -18, y: 2.25, z: -8, type: IngredientType.CARTUCHO },
+      { x: 12, y: 4.75, z: -15, type: IngredientType.BALA },
+      { x: -10, y: 1.75, z: 15, type: IngredientType.MUNICION },
+      { x: 25, y: 3.75, z: 0, type: IngredientType.DOCUMENTO },
+      { x: -20, y: 3.25, z: 5, type: IngredientType.BANDERA },
+      { x: 8, y: 2.75, z: 20, type: IngredientType.MEDALLA },
+      { x: -8, y: 4.25, z: -18, type: IngredientType.CARTUCHO },
+      { x: 0, y: 2.75, z: 22, type: IngredientType.BALA },
+      { x: 15, y: 1.75, z: -20, type: IngredientType.MUNICION },
     ];
 
-    for (const spawn of ingredientSpawns) {
-      const ingredient = new Ingredient(this.engine, {
+    for (const spawn of supplySpawns) {
+      const supply = new Ingredient(this.engine, {
         type: spawn.type,
         position: new THREE.Vector3(spawn.x, spawn.y, spawn.z),
       });
-      this.ingredients.push(ingredient);
+      this.supplies.push(supply);
     }
   }
 
   update(deltaTime: number): void {
-    // Update player (handles input and movement)
+    // Actualizar jugador (maneja entrada y movimiento)
     this.player.update(deltaTime, this.platforms);
 
-    // Update ingredients
-    for (const ingredient of this.ingredients) {
-      if (!ingredient.isCollected()) {
-        ingredient.update(deltaTime);
+    // Actualizar suministros
+    for (const supply of this.supplies) {
+      if (!supply.isCollected()) {
+        supply.update(deltaTime);
 
-        // Check collision with player
+        // Verificar colisión con jugador
         const playerPos = this.player.getPosition();
         const playerRadius = this.player.getRadius();
-        if (ingredient.checkCollision(playerPos, playerRadius)) {
-          // Add ingredient to player's stack
-          const ingredientMesh = ingredient.createMeshForPlayer();
-          const ingredientHeight = ingredient.getHeight();
-          this.player.addIngredient(ingredientMesh, ingredientHeight);
+        if (supply.checkCollision(playerPos, playerRadius)) {
+          // Agregar suministro a la pila del jugador
+          const supplyMesh = supply.createMeshForPlayer();
+          const supplyHeight = supply.getHeight();
+          this.player.addSupply(supplyMesh, supplyHeight);
         }
       }
     }
@@ -161,9 +162,9 @@ export class PlatformerGame implements Game {
     for (const platform of this.platforms) {
       platform.dispose();
     }
-    for (const ingredient of this.ingredients) {
-      ingredient.dispose();
+    for (const supply of this.supplies) {
+      supply.dispose();
     }
-    console.log('[PlatformerGame] Disposed');
+    console.log('[PlatformerGame] Liberado');
   }
 }

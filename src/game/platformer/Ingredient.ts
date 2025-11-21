@@ -1,19 +1,19 @@
 /**
- * AI-EDITABLE: Ingredient Collectible
+ * AI-EDITABLE: Objetos Recolectables de la Revolución
  *
- * This file defines collectible ingredients that the hamburger player can collect.
+ * Este archivo define objetos recolectables que el revolucionario puede recoger.
  */
 
 import * as THREE from 'three';
 import type { Engine } from '../../engine/Engine';
 
 export enum IngredientType {
-  LETTUCE = 'lettuce',
-  BACON = 'bacon',
-  CHEESE = 'cheese',
-  TOMATO = 'tomato',
-  PICKLE = 'pickle',
-  ONION = 'onion',
+  BALA = 'bala',
+  MUNICION = 'municion',
+  DOCUMENTO = 'documento',
+  BANDERA = 'bandera',
+  MEDALLA = 'medalla',
+  CARTUCHO = 'cartucho',
 }
 
 interface IngredientConfig {
@@ -31,37 +31,37 @@ export class Ingredient {
   private floatOffset: number = 0;
   private floatSpeed: number = 0.001;
 
-  // Ingredient properties
+  // Propiedades de los objetos de la revolución
   private static readonly INGREDIENT_CONFIGS = {
-    [IngredientType.LETTUCE]: {
-      color: 0x90ee90,
+    [IngredientType.BALA]: {
+      color: 0x8B7355, // Color dorado/cobre de las balas
       height: 0.15,
-      geometry: () => new THREE.CylinderGeometry(0.45, 0.5, 0.15, 8),
+      geometry: () => new THREE.CylinderGeometry(0.1, 0.1, 0.15, 8),
     },
-    [IngredientType.BACON]: {
-      color: 0xcd5c5c,
-      height: 0.1,
-      geometry: () => new THREE.BoxGeometry(0.5, 0.1, 0.4),
-    },
-    [IngredientType.CHEESE]: {
-      color: 0xffd700,
-      height: 0.12,
-      geometry: () => new THREE.BoxGeometry(0.5, 0.12, 0.5),
-    },
-    [IngredientType.TOMATO]: {
-      color: 0xff6347,
+    [IngredientType.MUNICION]: {
+      color: 0x2F4F4F, // Color gris oscuro de la munición
       height: 0.2,
-      geometry: () => new THREE.SphereGeometry(0.25, 8, 8),
+      geometry: () => new THREE.BoxGeometry(0.3, 0.2, 0.2),
     },
-    [IngredientType.PICKLE]: {
-      color: 0x32cd32,
+    [IngredientType.DOCUMENTO]: {
+      color: 0xFFF8DC, // Color beige del papel
+      height: 0.05,
+      geometry: () => new THREE.BoxGeometry(0.4, 0.05, 0.3),
+    },
+    [IngredientType.BANDERA]: {
+      color: 0x006847, // Color verde de la bandera mexicana
       height: 0.3,
-      geometry: () => new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8),
+      geometry: () => new THREE.BoxGeometry(0.1, 0.3, 0.4),
     },
-    [IngredientType.ONION]: {
-      color: 0xfff8dc,
-      height: 0.2,
-      geometry: () => new THREE.SphereGeometry(0.2, 8, 8),
+    [IngredientType.MEDALLA]: {
+      color: 0xFFD700, // Color dorado de las medallas
+      height: 0.1,
+      geometry: () => new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16),
+    },
+    [IngredientType.CARTUCHO]: {
+      color: 0x654321, // Color café de los cartuchos
+      height: 0.25,
+      geometry: () => new THREE.CylinderGeometry(0.12, 0.12, 0.25, 8),
     },
   };
 
@@ -83,17 +83,17 @@ export class Ingredient {
     this.mesh.castShadow = true;
     this.mesh.receiveShadow = true;
 
-    // Random float offset for variation
+    // Offset aleatorio de flotación para variación
     this.floatOffset = Math.random() * Math.PI * 2;
 
     engine.scene.add(this.mesh);
-    console.log(`[Ingredient] Created ${config.type} at`, config.position);
+    console.log(`[Ingredient] Creado ${config.type} en`, config.position);
   }
 
   update(deltaTime: number): void {
     if (this.collected) return;
 
-    // Rotate and float animation
+    // Animación de rotación y flotación
     this.mesh.rotation.y += this.rotationSpeed;
     this.floatOffset += this.floatSpeed;
     this.mesh.position.y = this.position.y + Math.sin(this.floatOffset) * 0.1;
@@ -116,7 +116,7 @@ export class Ingredient {
   private collect(): void {
     this.collected = true;
     this.engine.scene.remove(this.mesh);
-    console.log(`[Ingredient] Collected ${this.type}`);
+    console.log(`[Ingredient] Recolectado ${this.type}`);
   }
 
   isCollected(): boolean {
@@ -128,13 +128,13 @@ export class Ingredient {
   }
 
   createMeshForPlayer(): THREE.Mesh {
-    // Create a new mesh for the player's stack (since we removed the original)
+    // Crear un nuevo mesh para la pila del jugador (ya que removimos el original)
     const config_data = Ingredient.INGREDIENT_CONFIGS[this.type];
     const geometry = config_data.geometry();
     const material = new THREE.MeshStandardMaterial({
       color: config_data.color,
       roughness: 0.6,
-      metalness: this.type === IngredientType.CHEESE ? 0.3 : 0,
+      metalness: this.type === IngredientType.MEDALLA ? 0.5 : 0,
     });
 
     const mesh = new THREE.Mesh(geometry, material);
