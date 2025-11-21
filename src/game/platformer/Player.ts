@@ -30,6 +30,11 @@ export class Player {
   private velocity: THREE.Vector3;
   private rotation: number = 0;
   private onGround: boolean = false;
+  private health: number = 100;
+  private maxHealth: number = 100;
+  private healthBarContainer: HTMLDivElement | null = null;
+  private damageCooldown: number = 0;
+  private damageCooldownTime: number = 0.5; // 0.5 seconds invincibility after taking damage
 
   // Player settings
   private readonly speed = 0.1;
@@ -82,7 +87,75 @@ export class Player {
     this.indicator.position.y = 0.25;
     this.mesh.add(this.indicator);
 
+    // Create health bar
+    this.createHealthBar();
+
     console.log('[Player] Created as hamburger');
+  }
+
+  private createHealthBar(): void {
+    // Create health bar container
+    this.healthBarContainer = document.createElement('div');
+    this.healthBarContainer.style.position = 'fixed';
+    this.healthBarContainer.style.top = '20px';
+    this.healthBarContainer.style.left = '20px';
+    this.healthBarContainer.style.width = '200px';
+    this.healthBarContainer.style.height = '20px';
+    this.healthBarContainer.style.backgroundColor = '#333';
+    this.healthBarContainer.style.border = '2px solid #fff';
+    this.healthBarContainer.style.borderRadius = '10px';
+    this.healthBarContainer.style.overflow = 'hidden';
+    this.healthBarContainer.style.pointerEvents = 'none';
+    this.healthBarContainer.style.zIndex = '1000';
+    
+    // Create health fill
+    const healthFill = document.createElement('div');
+    healthFill.id = 'player-health-fill';
+    healthFill.style.width = '100%';
+    healthFill.style.height = '100%';
+    healthFill.style.backgroundColor = '#00ff00';
+    healthFill.style.transition = 'width 0.2s';
+    
+    // Create health text
+    const healthText = document.createElement('div');
+    healthText.id = 'player-health-text';
+    healthText.style.position = 'absolute';
+    healthText.style.top = '50%';
+    healthText.style.left = '50%';
+    healthText.style.transform = 'translate(-50%, -50%)';
+    healthText.style.color = '#fff';
+    healthText.style.fontSize = '12px';
+    healthText.style.fontWeight = 'bold';
+    healthText.style.textShadow = '1px 1px 2px #000';
+    healthText.textContent = '100 / 100';
+    
+    this.healthBarContainer.appendChild(healthFill);
+    this.healthBarContainer.appendChild(healthText);
+    document.body.appendChild(this.healthBarContainer);
+  }
+
+  private updateHealthBar(): void {
+    if (!this.healthBarContainer) return;
+    
+    const healthPercent = Math.max(0, this.health / this.maxHealth);
+    const healthFill = this.healthBarContainer.querySelector('#player-health-fill') as HTMLDivElement;
+    const healthText = this.healthBarContainer.querySelector('#player-health-text') as HTMLDivElement;
+    
+    if (healthFill) {
+      healthFill.style.width = `${healthPercent * 100}%`;
+      // Change color based on health
+      if (healthPercent > 0.6) {
+        healthFill.style.backgroundColor = '#00ff00';
+      } else if (healthPercent > 0.3) {
+        healthFill.style.backgroundColor = '#ffff00';
+      } else {
+        healthFill.style.backgroundColor = '#ff0000';
+      }
+    }
+    
+    if (healthText) {
+      healthText.textContent = `${Math.ceil(this.health)} / ${this.maxHealth}`;
+    }
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -96,6 +169,14 @@ export class Player {
     if (this.fireCooldown > 0) {
       this.fireCooldown -= deltaTime;
     }
+
+    // Update damage cooldown
+    if (this.damageCooldown > 0) {
+      this.damageCooldown -= deltaTime;
+    }
+
+    // Update health bar
+    this.updateHealthBar();
   }
 
   getLatestProjectile(): Projectile | null {
@@ -314,6 +395,17 @@ export class Player {
     return this.currentWeapon;
   }
 
+  isMeleeAttacking(): boolean {
+    // Melee attack is active if weapon is melee and fire cooldown was just triggered
+    // We consider it attacking for a short duration after the cooldown starts
+    if (!this.currentWeapon || !this.currentWeapon.isMelee()) {
+      return false;
+    }
+    // Consider attacking if cooldown is active (within attack duration)
+    const attackDuration = 1.0 / this.currentWeapon.getFireRate();
+    return this.fireCooldown > attackDuration * 0.7; // Active for 70% of cooldown
+  }
+
   shoot(): Projectile | null {
     if (!this.currentWeapon || this.fireCooldown > 0) {
       return null;
@@ -362,7 +454,35 @@ export class Player {
     return 0.5;
   }
 
+  takeDamage(damage: number): void {
+    if (this.damageCooldown > 0) return; // Invincibility frame
+    
+    this.health -= damage;
+    if (this.health < 0) {
+      this.health = 0;
+    }
+    this.damageCooldown = this.damageCooldownTime;
+    
+    console.log(`[Player] Took ${damage} damage. Health: ${this.health}/${this.maxHealth}`);
+  }
+
+  getHealth(): number {
+    return this.health;
+  }
+
+  getMaxHealth(): number {
+    return this.maxHealth;
+  }
+
+  isDead(): boolean {
+    return this.health <= 0;
+  }
+
   dispose(): void {
+    if (this.healthBarContainer) {
+      document.body.removeChild(this.healthBarContainer);
+      this.healthBarContainer = null;
+    }
     this.engine.scene.remove(this.mesh);
     this.bunBottom.geometry.dispose();
     (this.bunBottom.material as THREE.Material).dispose();

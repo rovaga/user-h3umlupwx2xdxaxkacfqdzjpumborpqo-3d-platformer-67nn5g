@@ -31,7 +31,7 @@ export class Weapon {
   // Weapon properties
   private static readonly WEAPON_CONFIGS = {
     [WeaponType.SWORD]: {
-      damage: 50,
+      damage: 35,
       range: 2.0,
       fireRate: 0.5, // attacks per second
       isMelee: true,

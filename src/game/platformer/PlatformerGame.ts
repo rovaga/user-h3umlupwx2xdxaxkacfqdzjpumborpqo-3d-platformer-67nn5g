@@ -13,6 +13,7 @@ import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
 import { Weapon, WeaponType } from './Weapon';
 import { Projectile } from './Projectile';
+import { Enemy } from './Enemy';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
@@ -21,6 +22,11 @@ export class PlatformerGame implements Game {
   private ingredients: Ingredient[] = [];
   private weapons: Weapon[] = [];
   private projectiles: Projectile[] = [];
+  private enemies: Enemy[] = [];
+  private enemySpawnTimer: number = 0;
+  private enemySpawnInterval: number = 1.0; // Spawn 1 enemy per second
+  private meleeAttackActive: boolean = false;
+  private meleeHitEnemies: Set<Enemy> = new Set();
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -167,6 +173,43 @@ export class PlatformerGame implements Game {
       this.projectiles.push(projectile);
     }
 
+    // Check for melee attack (use Player's melee attack state)
+    const currentWeapon = this.player.getCurrentWeapon();
+    const wasAttacking = this.meleeAttackActive;
+    this.meleeAttackActive = this.player.isMeleeAttacking();
+    
+    // Reset hit tracking when attack starts
+    if (this.meleeAttackActive && !wasAttacking) {
+      this.meleeHitEnemies.clear();
+    }
+
+    // Spawn enemies
+    this.enemySpawnTimer += deltaTime;
+    if (this.enemySpawnTimer >= this.enemySpawnInterval) {
+      this.spawnEnemy();
+      this.enemySpawnTimer = 0;
+    }
+
+    // Update enemies
+    const playerPosition = this.player.getPosition();
+    for (let i = this.enemies.length - 1; i >= 0; i--) {
+      const enemy = this.enemies[i];
+      
+      if (enemy.isDead()) {
+        enemy.dispose();
+        this.enemies.splice(i, 1);
+        continue;
+      }
+
+      enemy.update(deltaTime, this.platforms, playerPosition);
+
+      // Check if enemy can attack player
+      const distanceToPlayer = enemy.getPosition().distanceTo(playerPosition);
+      if (distanceToPlayer <= enemy.getAttackRange() && enemy.canAttack()) {
+        this.player.takeDamage(enemy.getAttackDamage());
+      }
+    }
+
     // Update ingredients
     for (const ingredient of this.ingredients) {
       if (!ingredient.isCollected()) {
@@ -203,11 +246,57 @@ export class PlatformerGame implements Game {
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const projectile = this.projectiles[i];
       const isActive = projectile.update(deltaTime);
+      
       if (!isActive) {
         projectile.dispose();
         this.projectiles.splice(i, 1);
+        continue;
+      }
+
+      // Check projectile collision with enemies
+      const projectilePos = projectile.getPosition();
+      for (let j = this.enemies.length - 1; j >= 0; j--) {
+        const enemy = this.enemies[j];
+        if (enemy.isDead()) continue;
+
+        const distance = projectilePos.distanceTo(enemy.getPosition());
+        if (distance < enemy.getRadius() + 0.1) {
+          enemy.takeDamage(projectile.getDamage());
+          projectile.dispose();
+          this.projectiles.splice(i, 1);
+          break;
+        }
       }
     }
+
+    // Check melee attack collision with enemies
+    if (this.meleeAttackActive && currentWeapon && currentWeapon.isMelee()) {
+      const playerPos = this.player.getPosition();
+      const meleeRange = currentWeapon.getRange();
+      
+      for (let i = this.enemies.length - 1; i >= 0; i--) {
+        const enemy = this.enemies[i];
+        if (enemy.isDead() || this.meleeHitEnemies.has(enemy)) continue;
+
+        const distance = playerPos.distanceTo(enemy.getPosition());
+        if (distance <= meleeRange) {
+          enemy.takeDamage(currentWeapon.getDamage());
+          this.meleeHitEnemies.add(enemy);
+        }
+      }
+    }
+  }
+
+  private spawnEnemy(): void {
+    // Spawn enemy at random position around the map
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 15 + Math.random() * 10; // Spawn 15-25 units away from center
+    const spawnX = Math.cos(angle) * distance;
+    const spawnZ = Math.sin(angle) * distance;
+    const spawnY = 2; // Spawn above ground
+
+    const enemy = new Enemy(this.engine, new THREE.Vector3(spawnX, spawnY, spawnZ));
+    this.enemies.push(enemy);
   }
 
   onResize(width: number, height: number): void {
@@ -227,6 +316,9 @@ export class PlatformerGame implements Game {
     }
     for (const projectile of this.projectiles) {
       projectile.dispose();
+    }
+    for (const enemy of this.enemies) {
+      enemy.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }
