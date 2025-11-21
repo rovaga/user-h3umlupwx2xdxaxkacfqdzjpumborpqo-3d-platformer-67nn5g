@@ -1,19 +1,14 @@
 /**
- * AI-EDITABLE: Ingredient Collectible
+ * AI-EDITABLE: Microphone Collectible
  *
- * This file defines collectible ingredients that the hamburger player can collect.
+ * This file defines collectible microphones that the girl player can collect.
  */
 
 import * as THREE from 'three';
 import type { Engine } from '../../engine/Engine';
 
 export enum IngredientType {
-  LETTUCE = 'lettuce',
-  BACON = 'bacon',
-  CHEESE = 'cheese',
-  TOMATO = 'tomato',
-  PICKLE = 'pickle',
-  ONION = 'onion',
+  MICROPHONE = 'microphone',
 }
 
 interface IngredientConfig {
@@ -23,7 +18,7 @@ interface IngredientConfig {
 
 export class Ingredient {
   private engine: Engine;
-  private mesh: THREE.Mesh;
+  private mesh: THREE.Group | THREE.Mesh;
   private type: IngredientType;
   private position: THREE.Vector3;
   private collected: boolean = false;
@@ -31,37 +26,50 @@ export class Ingredient {
   private floatOffset: number = 0;
   private floatSpeed: number = 0.001;
 
-  // Ingredient properties
+  // Microphone properties
   private static readonly INGREDIENT_CONFIGS = {
-    [IngredientType.LETTUCE]: {
-      color: 0x90ee90,
-      height: 0.15,
-      geometry: () => new THREE.CylinderGeometry(0.45, 0.5, 0.15, 8),
-    },
-    [IngredientType.BACON]: {
-      color: 0xcd5c5c,
-      height: 0.1,
-      geometry: () => new THREE.BoxGeometry(0.5, 0.1, 0.4),
-    },
-    [IngredientType.CHEESE]: {
-      color: 0xffd700,
-      height: 0.12,
-      geometry: () => new THREE.BoxGeometry(0.5, 0.12, 0.5),
-    },
-    [IngredientType.TOMATO]: {
-      color: 0xff6347,
-      height: 0.2,
-      geometry: () => new THREE.SphereGeometry(0.25, 8, 8),
-    },
-    [IngredientType.PICKLE]: {
-      color: 0x32cd32,
-      height: 0.3,
-      geometry: () => new THREE.CylinderGeometry(0.15, 0.15, 0.3, 8),
-    },
-    [IngredientType.ONION]: {
-      color: 0xfff8dc,
-      height: 0.2,
-      geometry: () => new THREE.SphereGeometry(0.2, 8, 8),
+    [IngredientType.MICROPHONE]: {
+      color: 0x333333, // Dark gray/black for microphone
+      height: 0.4,
+      geometry: () => {
+        // Create microphone shape: handle (cylinder) + head (sphere)
+        const group = new THREE.Group();
+        
+        // Microphone handle (vertical cylinder)
+        const handleGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8);
+        const handleMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x333333,
+          roughness: 0.3,
+          metalness: 0.7
+        });
+        const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+        handle.position.y = -0.125;
+        group.add(handle);
+        
+        // Microphone head (sphere)
+        const headGeometry = new THREE.SphereGeometry(0.12, 8, 8);
+        const headMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x1a1a1a,
+          roughness: 0.2,
+          metalness: 0.8
+        });
+        const head = new THREE.Mesh(headGeometry, headMaterial);
+        head.position.y = 0.05;
+        group.add(head);
+        
+        // Microphone grill (small cylinder on top)
+        const grillGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 8);
+        const grillMaterial = new THREE.MeshStandardMaterial({ 
+          color: 0x000000,
+          roughness: 0.1,
+          metalness: 0.9
+        });
+        const grill = new THREE.Mesh(grillGeometry, grillMaterial);
+        grill.position.y = 0.15;
+        group.add(grill);
+        
+        return group;
+      },
     },
   };
 
@@ -72,16 +80,30 @@ export class Ingredient {
 
     const config_data = Ingredient.INGREDIENT_CONFIGS[config.type];
     const geometry = config_data.geometry();
-    const material = new THREE.MeshStandardMaterial({
-      color: config_data.color,
-      roughness: 0.6,
-      metalness: config.type === IngredientType.CHEESE ? 0.3 : 0,
-    });
-
-    this.mesh = new THREE.Mesh(geometry, material);
-    this.mesh.position.copy(this.position);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    
+    // Geometry is already a Group for microphone, so use it directly
+    if (geometry instanceof THREE.Group) {
+      this.mesh = geometry;
+      this.mesh.position.copy(this.position);
+      // Enable shadows for all children
+      this.mesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    } else {
+      // Fallback for other types (shouldn't happen with microphone)
+      const material = new THREE.MeshStandardMaterial({
+        color: config_data.color,
+        roughness: 0.6,
+        metalness: 0.7,
+      });
+      this.mesh = new THREE.Mesh(geometry, material);
+      this.mesh.position.copy(this.position);
+      this.mesh.castShadow = true;
+      this.mesh.receiveShadow = true;
+    }
 
     // Random float offset for variation
     this.floatOffset = Math.random() * Math.PI * 2;
@@ -127,19 +149,45 @@ export class Ingredient {
     return this.type;
   }
 
-  createMeshForPlayer(): THREE.Mesh {
-    // Create a new mesh for the player's stack (since we removed the original)
-    const config_data = Ingredient.INGREDIENT_CONFIGS[this.type];
-    const geometry = config_data.geometry();
-    const material = new THREE.MeshStandardMaterial({
-      color: config_data.color,
-      roughness: 0.6,
-      metalness: this.type === IngredientType.CHEESE ? 0.3 : 0,
+  createMeshForPlayer(): THREE.Group {
+    // Create a new microphone group for the player's stack
+    const handleGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.25, 8);
+    const handleMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x333333,
+      roughness: 0.3,
+      metalness: 0.7
     });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    return mesh;
+    const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+    handle.castShadow = true;
+    
+    const headGeometry = new THREE.SphereGeometry(0.12, 8, 8);
+    const headMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a1a1a,
+      roughness: 0.2,
+      metalness: 0.8
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 0.05;
+    head.castShadow = true;
+    
+    // Microphone grill
+    const grillGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.05, 8);
+    const grillMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x000000,
+      roughness: 0.1,
+      metalness: 0.9
+    });
+    const grill = new THREE.Mesh(grillGeometry, grillMaterial);
+    grill.position.y = 0.15;
+    grill.castShadow = true;
+    
+    // Create a group and add all parts
+    const group = new THREE.Group();
+    group.add(handle);
+    group.add(head);
+    group.add(grill);
+    
+    return group;
   }
 
   getHeight(): number {

@@ -97,36 +97,38 @@ export class PlatformerGame implements Game {
   }
 
   private createIngredients(): void {
-    // Define ingredient spawn positions (on top of platforms)
-    const ingredientSpawns = [
-      { x: 5, y: 1.75, z: 0, type: IngredientType.LETTUCE },
-      { x: 10, y: 2.75, z: 5, type: IngredientType.BACON },
-      { x: 0, y: 2.25, z: -8, type: IngredientType.CHEESE },
-      { x: -8, y: 3.25, z: -5, type: IngredientType.TOMATO },
-      { x: -5, y: 1.75, z: 8, type: IngredientType.PICKLE },
-      { x: 8, y: 3.75, z: -8, type: IngredientType.ONION },
-      { x: 15, y: 2.25, z: -10, type: IngredientType.LETTUCE },
-      { x: -15, y: 2.75, z: 10, type: IngredientType.BACON },
-      { x: -12, y: 3.75, z: -12, type: IngredientType.CHEESE },
-      { x: 18, y: 3.25, z: 8, type: IngredientType.TOMATO },
-      { x: 20, y: 1.75, z: 15, type: IngredientType.PICKLE },
-      { x: -18, y: 2.25, z: -8, type: IngredientType.ONION },
-      { x: 12, y: 4.75, z: -15, type: IngredientType.LETTUCE },
-      { x: -10, y: 1.75, z: 15, type: IngredientType.BACON },
-      { x: 25, y: 3.75, z: 0, type: IngredientType.CHEESE },
-      { x: -20, y: 3.25, z: 5, type: IngredientType.TOMATO },
-      { x: 8, y: 2.75, z: 20, type: IngredientType.PICKLE },
-      { x: -8, y: 4.25, z: -18, type: IngredientType.ONION },
-      { x: 0, y: 2.75, z: 22, type: IngredientType.LETTUCE },
-      { x: 15, y: 1.75, z: -20, type: IngredientType.BACON },
+    // Define microphone spawn positions (on top of each platform)
+    // Each platform gets one microphone positioned at platform.y + platform.h/2 + 0.25
+    const microphoneSpawns = [
+      { x: 5, y: 1.75, z: 0 },      // Platform 1
+      { x: 10, y: 2.75, z: 5 },     // Platform 2
+      { x: 0, y: 2.25, z: -8 },     // Platform 3
+      { x: -8, y: 3.25, z: -5 },    // Platform 4
+      { x: -5, y: 1.75, z: 8 },     // Platform 5
+      { x: 8, y: 3.75, z: -8 },     // Platform 6
+      { x: 15, y: 2.25, z: -10 },   // Platform 7
+      { x: -15, y: 2.75, z: 10 },   // Platform 8
+      { x: -12, y: 3.75, z: -12 },  // Platform 9
+      { x: 18, y: 3.25, z: 8 },     // Platform 10
+      { x: 20, y: 1.75, z: 15 },    // Platform 11
+      { x: -18, y: 2.25, z: -8 },   // Platform 12
+      { x: 12, y: 4.75, z: -15 },   // Platform 13
+      { x: -10, y: 1.75, z: 15 },   // Platform 14
+      { x: 25, y: 3.75, z: 0 },     // Platform 15
+      { x: -20, y: 3.25, z: 5 },    // Platform 16
+      { x: 8, y: 2.75, z: 20 },     // Platform 17
+      { x: -8, y: 4.25, z: -18 },   // Platform 18
+      { x: 0, y: 2.75, z: 22 },     // Platform 19
+      { x: 15, y: 1.75, z: -20 },   // Platform 20
+      { x: -25, y: 2.25, z: -2 },   // Platform 21 (ground is platform 0)
     ];
 
-    for (const spawn of ingredientSpawns) {
-      const ingredient = new Ingredient(this.engine, {
-        type: spawn.type,
+    for (const spawn of microphoneSpawns) {
+      const microphone = new Ingredient(this.engine, {
+        type: IngredientType.MICROPHONE,
         position: new THREE.Vector3(spawn.x, spawn.y, spawn.z),
       });
-      this.ingredients.push(ingredient);
+      this.ingredients.push(microphone);
     }
   }
 
