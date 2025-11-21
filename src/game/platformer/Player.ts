@@ -11,9 +11,12 @@ import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
-  private bunBottom: THREE.Mesh;
-  private bunTop: THREE.Mesh;
+  private mesh: THREE.Group; // Group to hold Francisco I. Madero character
+  private body: THREE.Mesh;
+  private head: THREE.Mesh;
+  private hat: THREE.Mesh;
+  private hatBrim: THREE.Mesh;
+  private mustache: THREE.Mesh;
   private indicator: THREE.Mesh;
   private collectedIngredients: THREE.Mesh[] = [];
   private ingredientStackHeight: number = 0;
@@ -40,31 +43,65 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player group (hamburger)
+    // Create player group (Francisco I. Madero)
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574, // Golden brown bun color
-      roughness: 0.7 
+    // Create body (torso - dark suit color)
+    const bodyGeometry = new THREE.BoxGeometry(0.6, 0.8, 0.4);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x2c2c2c, // Dark suit color
+      roughness: 0.8 
     });
-    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
-    this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
-    this.mesh.add(this.bunBottom);
+    this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    this.body.position.y = 0.1;
+    this.body.castShadow = true;
+    this.mesh.add(this.body);
 
-    // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
-    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574,
+    // Create head (sphere)
+    const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xf4c2a1, // Skin tone
       roughness: 0.7 
     });
-    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
-    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
-    this.mesh.add(this.bunTop);
+    this.head = new THREE.Mesh(headGeometry, headMaterial);
+    this.head.position.y = 0.6;
+    this.head.castShadow = true;
+    this.mesh.add(this.head);
+
+    // Create hat (sombrero/hat characteristic of the era)
+    const hatGeometry = new THREE.CylinderGeometry(0.3, 0.35, 0.15, 16);
+    const hatMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a1a1a, // Black hat
+      roughness: 0.6 
+    });
+    this.hat = new THREE.Mesh(hatGeometry, hatMaterial);
+    this.hat.position.y = 0.75;
+    this.hat.castShadow = true;
+    this.mesh.add(this.hat);
+
+    // Create hat brim
+    const brimGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.05, 16);
+    const brimMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x1a1a1a,
+      roughness: 0.6 
+    });
+    this.hatBrim = new THREE.Mesh(brimGeometry, brimMaterial);
+    this.hatBrim.position.y = 0.68;
+    this.hatBrim.castShadow = true;
+    this.mesh.add(this.hatBrim);
+
+    // Create mustache (characteristic of Francisco I. Madero)
+    const mustacheGeometry = new THREE.BoxGeometry(0.3, 0.08, 0.05);
+    const mustacheMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x2a2a2a, // Dark mustache
+      roughness: 0.8 
+    });
+    this.mustache = new THREE.Mesh(mustacheGeometry, mustacheMaterial);
+    this.mustache.position.y = 0.55;
+    this.mustache.position.z = 0.2;
+    this.mustache.castShadow = true;
+    this.mesh.add(this.mustache);
 
     // Create direction indicator (yellow cone)
     const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
@@ -72,10 +109,10 @@ export class Player {
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     this.indicator.rotation.x = Math.PI / 2;
     this.indicator.position.z = 0.6;
-    this.indicator.position.y = 0.25;
+    this.indicator.position.y = 0.8;
     this.mesh.add(this.indicator);
 
-    console.log('[Player] Created as hamburger');
+    console.log('[Player] Created as Francisco I. Madero');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -178,8 +215,8 @@ export class Player {
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
-      const playerRadius = 0.5;
+      const playerBottom = this.position.y - 0.4; // Adjusted for character height
+      const playerRadius = 0.3;
 
       // Check horizontal overlap
       if (
@@ -233,15 +270,14 @@ export class Player {
   }
 
   addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
-    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
-    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
+    // Position ingredient on top of current stack (stack starts at top of head, y=0.85)
+    ingredientMesh.position.y = 0.85 + this.ingredientStackHeight + height / 2;
     this.mesh.add(ingredientMesh);
     this.collectedIngredients.push(ingredientMesh);
     this.ingredientStackHeight += height;
     
-    // Move top bun and indicator higher to sit on top of ingredients
-    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
-    this.indicator.position.y = this.ingredientStackHeight + 0.15;
+    // Move indicator higher to sit on top of ingredients
+    this.indicator.position.y = 0.85 + this.ingredientStackHeight + 0.15;
     
     console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
   }
@@ -251,15 +287,21 @@ export class Player {
   }
 
   getRadius(): number {
-    return 0.5;
+    return 0.3;
   }
 
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.bunBottom.geometry.dispose();
-    (this.bunBottom.material as THREE.Material).dispose();
-    this.bunTop.geometry.dispose();
-    (this.bunTop.material as THREE.Material).dispose();
+    this.body.geometry.dispose();
+    (this.body.material as THREE.Material).dispose();
+    this.head.geometry.dispose();
+    (this.head.material as THREE.Material).dispose();
+    this.hat.geometry.dispose();
+    (this.hat.material as THREE.Material).dispose();
+    this.hatBrim.geometry.dispose();
+    (this.hatBrim.material as THREE.Material).dispose();
+    this.mustache.geometry.dispose();
+    (this.mustache.material as THREE.Material).dispose();
     this.indicator.geometry.dispose();
     (this.indicator.material as THREE.Material).dispose();
     
