@@ -11,12 +11,16 @@ import type { Game } from '../../engine/Types';
 import { Player } from './Player';
 import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
+import { Railroad } from './Railroad';
+import { Train } from './Train';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
+  private railroads: Railroad[] = [];
+  private trains: Train[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -35,6 +39,9 @@ export class PlatformerGame implements Game {
 
     // Create ingredients
     this.createIngredients();
+
+    // Create railroads and trains
+    this.createRailroads();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -130,6 +137,40 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private createRailroads(): void {
+    // Create railroad tracks across the game world
+    const railroadConfigs = [
+      {
+        start: new THREE.Vector3(-30, 0.5, 0),
+        end: new THREE.Vector3(30, 0.5, 0),
+        height: 0.5,
+      },
+      {
+        start: new THREE.Vector3(0, 0.5, -30),
+        end: new THREE.Vector3(0, 0.5, 30),
+        height: 0.5,
+      },
+      {
+        start: new THREE.Vector3(-20, 0.5, -20),
+        end: new THREE.Vector3(20, 0.5, 20),
+        height: 0.5,
+      },
+    ];
+
+    for (const config of railroadConfigs) {
+      const railroad = new Railroad(this.engine, config);
+      this.railroads.push(railroad);
+
+      // Create a train on each railroad
+      const train = new Train(this.engine, {
+        railroad: railroad,
+        speed: 0.2 + Math.random() * 0.2, // Random speed between 0.2 and 0.4
+        startPosition: Math.random(), // Random starting position
+      });
+      this.trains.push(train);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -150,6 +191,11 @@ export class PlatformerGame implements Game {
         }
       }
     }
+
+    // Update trains
+    for (const train of this.trains) {
+      train.update(deltaTime);
+    }
   }
 
   onResize(width: number, height: number): void {
@@ -163,6 +209,12 @@ export class PlatformerGame implements Game {
     }
     for (const ingredient of this.ingredients) {
       ingredient.dispose();
+    }
+    for (const railroad of this.railroads) {
+      railroad.dispose();
+    }
+    for (const train of this.trains) {
+      train.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }
