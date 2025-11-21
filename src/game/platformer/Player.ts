@@ -11,18 +11,23 @@ import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Grupo para contener el cuerpo y suministros
+  private mesh: THREE.Group; // Grupo para contener el cuerpo y tacos
   private body: THREE.Mesh;
-  private sombrero: THREE.Mesh;
-  private rifle: THREE.Mesh;
-  private collectedSupplies: THREE.Mesh[] = [];
-  private supplyStackHeight: number = 0;
+  private head: THREE.Mesh;
+  private leftArm: THREE.Mesh;
+  private rightArm: THREE.Mesh;
+  private leftLeg: THREE.Mesh;
+  private rightLeg: THREE.Mesh;
+  private dress: THREE.Mesh;
+  private collectedTacos: (THREE.Mesh | THREE.Group)[] = [];
+  private tacoStackHeight: number = 0;
 
   // Estado del jugador
   private position: THREE.Vector3;
   private velocity: THREE.Vector3;
   private rotation: number = 0;
   private onGround: boolean = false;
+  private danceTime: number = 0; // Para animación de baile
 
   // Configuración del jugador
   private readonly speed = 0.1;
@@ -40,55 +45,94 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Crear grupo del jugador (revolucionario mexicano)
+    // Crear grupo del jugador (mujer bailando)
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Crear cuerpo del revolucionario (torso)
-    const bodyGeometry = new THREE.CylinderGeometry(0.4, 0.4, 1.2, 16);
+    // Crear cuerpo (torso)
+    const bodyGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.8, 16);
     const bodyMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x8B4513, // Color café de la ropa del revolucionario
-      roughness: 0.8 
+      color: 0xFF69B4, // Color rosa del vestido
+      roughness: 0.7 
     });
     this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-    this.body.position.y = 0.6;
+    this.body.position.y = 0.4;
     this.body.castShadow = true;
     this.mesh.add(this.body);
 
-    // Crear sombrero mexicano
-    const sombreroGeometry = new THREE.CylinderGeometry(0.6, 0.5, 0.15, 16);
-    const sombreroMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x2F4F2F, // Color verde oscuro del sombrero
+    // Crear cabeza
+    const headGeometry = new THREE.SphereGeometry(0.25, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xFFDBB3, // Color piel
+      roughness: 0.6 
+    });
+    this.head = new THREE.Mesh(headGeometry, headMaterial);
+    this.head.position.y = 0.95;
+    this.head.castShadow = true;
+    this.mesh.add(this.head);
+
+    // Crear pelo
+    const hairGeometry = new THREE.SphereGeometry(0.28, 16, 16);
+    const hairMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x8B4513, // Color café del pelo
+      roughness: 0.8 
+    });
+    const hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    hair.position.y = 0.98;
+    hair.position.z = -0.05;
+    hair.scale.y = 1.2;
+    hair.castShadow = true;
+    this.mesh.add(hair);
+
+    // Crear vestido (falda)
+    const dressGeometry = new THREE.ConeGeometry(0.5, 0.6, 16);
+    const dressMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xFF1493, // Color rosa intenso del vestido
       roughness: 0.7 
     });
-    this.sombrero = new THREE.Mesh(sombreroGeometry, sombreroMaterial);
-    this.sombrero.position.y = 1.35;
-    this.sombrero.castShadow = true;
-    this.mesh.add(this.sombrero);
+    this.dress = new THREE.Mesh(dressGeometry, dressMaterial);
+    this.dress.position.y = 0.1;
+    this.dress.rotation.x = Math.PI;
+    this.dress.castShadow = true;
+    this.mesh.add(this.dress);
 
-    // Crear ala del sombrero
-    const alaGeometry = new THREE.TorusGeometry(0.55, 0.1, 8, 16);
-    const alaMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0x2F4F2F,
-      roughness: 0.7 
+    // Crear brazo izquierdo
+    const armGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.5, 8);
+    const armMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xFFDBB3, // Color piel
+      roughness: 0.6 
     });
-    const ala = new THREE.Mesh(alaGeometry, alaMaterial);
-    ala.rotation.x = Math.PI / 2;
-    ala.position.y = 1.3;
-    ala.castShadow = true;
-    this.mesh.add(ala);
+    this.leftArm = new THREE.Mesh(armGeometry, armMaterial);
+    this.leftArm.position.set(-0.4, 0.5, 0);
+    this.leftArm.rotation.z = 0.3;
+    this.leftArm.castShadow = true;
+    this.mesh.add(this.leftArm);
 
-    // Crear rifle como indicador de dirección
-    const rifleGeometry = new THREE.BoxGeometry(0.1, 0.1, 1.2);
-    const rifleMaterial = new THREE.MeshStandardMaterial({ color: 0x654321 });
-    this.rifle = new THREE.Mesh(rifleGeometry, rifleMaterial);
-    this.rifle.rotation.x = Math.PI / 2;
-    this.rifle.position.z = 0.6;
-    this.rifle.position.y = 0.8;
-    this.rifle.castShadow = true;
-    this.mesh.add(this.rifle);
+    // Crear brazo derecho
+    this.rightArm = new THREE.Mesh(armGeometry, armMaterial);
+    this.rightArm.position.set(0.4, 0.5, 0);
+    this.rightArm.rotation.z = -0.3;
+    this.rightArm.castShadow = true;
+    this.mesh.add(this.rightArm);
 
-    console.log('[Player] Creado como revolucionario mexicano');
+    // Crear pierna izquierda
+    const legGeometry = new THREE.CylinderGeometry(0.1, 0.1, 0.6, 8);
+    const legMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xFFDBB3, // Color piel
+      roughness: 0.6 
+    });
+    this.leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    this.leftLeg.position.set(-0.15, -0.2, 0);
+    this.leftLeg.castShadow = true;
+    this.mesh.add(this.leftLeg);
+
+    // Crear pierna derecha
+    this.rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    this.rightLeg.position.set(0.15, -0.2, 0);
+    this.rightLeg.castShadow = true;
+    this.mesh.add(this.rightLeg);
+
+    console.log('[Player] Creada como mujer bailando');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -97,6 +141,7 @@ export class Player {
     this.checkCollisions(platforms);
     this.updateMesh();
     this.updateCamera();
+    this.animateDance(deltaTime);
   }
 
   private handleInput(): void {
@@ -220,6 +265,37 @@ export class Player {
     this.mesh.rotation.y = this.rotation;
   }
 
+  private animateDance(deltaTime: number): void {
+    // Incrementar tiempo de baile
+    this.danceTime += deltaTime * 0.005;
+
+    // Animar brazos (movimiento de baile)
+    if (this.leftArm && this.rightArm) {
+      this.leftArm.rotation.z = 0.3 + Math.sin(this.danceTime) * 0.5;
+      this.rightArm.rotation.z = -0.3 - Math.sin(this.danceTime) * 0.5;
+      this.leftArm.rotation.x = Math.sin(this.danceTime * 1.2) * 0.3;
+      this.rightArm.rotation.x = -Math.sin(this.danceTime * 1.2) * 0.3;
+    }
+
+    // Animar piernas (pasos de baile)
+    if (this.leftLeg && this.rightLeg) {
+      this.leftLeg.rotation.x = Math.sin(this.danceTime * 1.5) * 0.2;
+      this.rightLeg.rotation.x = -Math.sin(this.danceTime * 1.5) * 0.2;
+    }
+
+    // Animar vestido (movimiento de falda)
+    if (this.dress) {
+      this.dress.rotation.z = Math.sin(this.danceTime * 0.8) * 0.1;
+      this.dress.scale.x = 1 + Math.sin(this.danceTime * 1.5) * 0.1;
+      this.dress.scale.z = 1 + Math.cos(this.danceTime * 1.5) * 0.1;
+    }
+
+    // Animar cabeza (ligero movimiento)
+    if (this.head) {
+      this.head.rotation.y = Math.sin(this.danceTime * 0.5) * 0.1;
+    }
+  }
+
   private updateCamera(): void {
     const camera = this.engine.camera;
     const cameraOffset = new THREE.Vector3();
@@ -245,14 +321,14 @@ export class Player {
     camera.lookAt(this.position);
   }
 
-  addSupply(supplyMesh: THREE.Mesh, height: number): void {
-    // Posicionar suministro en la parte superior de la pila actual
-    supplyMesh.position.y = this.supplyStackHeight + height / 2 + 1.2;
-    this.mesh.add(supplyMesh);
-    this.collectedSupplies.push(supplyMesh);
-    this.supplyStackHeight += height;
+  addTaco(tacoMesh: THREE.Mesh | THREE.Group, height: number): void {
+    // Posicionar taco en la parte superior de la pila actual
+    tacoMesh.position.y = this.tacoStackHeight + height / 2 + 1.2;
+    this.mesh.add(tacoMesh);
+    this.collectedTacos.push(tacoMesh);
+    this.tacoStackHeight += height;
     
-    console.log(`[Player] Suministro agregado. Altura de pila: ${this.supplyStackHeight}`);
+    console.log(`[Player] Taco agregado. Altura de pila: ${this.tacoStackHeight}`);
   }
 
   getPosition(): THREE.Vector3 {
@@ -267,15 +343,40 @@ export class Player {
     this.engine.scene.remove(this.mesh);
     this.body.geometry.dispose();
     (this.body.material as THREE.Material).dispose();
-    this.sombrero.geometry.dispose();
-    (this.sombrero.material as THREE.Material).dispose();
-    this.rifle.geometry.dispose();
-    (this.rifle.material as THREE.Material).dispose();
+    this.head.geometry.dispose();
+    (this.head.material as THREE.Material).dispose();
+    this.leftArm.geometry.dispose();
+    (this.leftArm.material as THREE.Material).dispose();
+    this.rightArm.geometry.dispose();
+    (this.rightArm.material as THREE.Material).dispose();
+    this.leftLeg.geometry.dispose();
+    (this.leftLeg.material as THREE.Material).dispose();
+    this.rightLeg.geometry.dispose();
+    (this.rightLeg.material as THREE.Material).dispose();
+    this.dress.geometry.dispose();
+    (this.dress.material as THREE.Material).dispose();
     
-    // Liberar suministros recolectados
-    for (const supply of this.collectedSupplies) {
-      supply.geometry.dispose();
-      (supply.material as THREE.Material).dispose();
+    // Liberar tacos recolectados
+    for (const taco of this.collectedTacos) {
+      if (taco instanceof THREE.Group) {
+        taco.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat) => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+      } else {
+        taco.geometry.dispose();
+        if (Array.isArray(taco.material)) {
+          taco.material.forEach((mat) => mat.dispose());
+        } else {
+          taco.material.dispose();
+        }
+      }
     }
     
     console.log('[Player] Liberado');

@@ -1,5 +1,5 @@
 /**
- * AI-EDITABLE: Implementación del Juego de la Revolución Mexicana
+ * AI-EDITABLE: Implementación del Juego - Mujer Bailando Recolectando Tacos
  *
  * Este archivo contiene la lógica principal del juego.
  * Siéntete libre de modificar, extender o reescribir completamente este archivo.
@@ -16,7 +16,7 @@ export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
-  private supplies: Ingredient[] = [];
+  private tacos: Ingredient[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -33,8 +33,8 @@ export class PlatformerGame implements Game {
     // Crear jugador
     this.player = new Player(engine);
 
-    // Crear suministros
-    this.createSupplies();
+    // Crear tacos
+    this.createTacos();
 
     console.log('[PlatformerGame] Inicializado');
   }
@@ -97,37 +97,37 @@ export class PlatformerGame implements Game {
     }
   }
 
-  private createSupplies(): void {
-    // Definir posiciones de aparición de suministros (sobre las plataformas)
-    const supplySpawns = [
-      { x: 5, y: 1.75, z: 0, type: IngredientType.BALA },
-      { x: 10, y: 2.75, z: 5, type: IngredientType.MUNICION },
-      { x: 0, y: 2.25, z: -8, type: IngredientType.DOCUMENTO },
-      { x: -8, y: 3.25, z: -5, type: IngredientType.BANDERA },
-      { x: -5, y: 1.75, z: 8, type: IngredientType.MEDALLA },
-      { x: 8, y: 3.75, z: -8, type: IngredientType.CARTUCHO },
-      { x: 15, y: 2.25, z: -10, type: IngredientType.BALA },
-      { x: -15, y: 2.75, z: 10, type: IngredientType.MUNICION },
-      { x: -12, y: 3.75, z: -12, type: IngredientType.DOCUMENTO },
-      { x: 18, y: 3.25, z: 8, type: IngredientType.BANDERA },
-      { x: 20, y: 1.75, z: 15, type: IngredientType.MEDALLA },
-      { x: -18, y: 2.25, z: -8, type: IngredientType.CARTUCHO },
-      { x: 12, y: 4.75, z: -15, type: IngredientType.BALA },
-      { x: -10, y: 1.75, z: 15, type: IngredientType.MUNICION },
-      { x: 25, y: 3.75, z: 0, type: IngredientType.DOCUMENTO },
-      { x: -20, y: 3.25, z: 5, type: IngredientType.BANDERA },
-      { x: 8, y: 2.75, z: 20, type: IngredientType.MEDALLA },
-      { x: -8, y: 4.25, z: -18, type: IngredientType.CARTUCHO },
-      { x: 0, y: 2.75, z: 22, type: IngredientType.BALA },
-      { x: 15, y: 1.75, z: -20, type: IngredientType.MUNICION },
+  private createTacos(): void {
+    // Definir posiciones de aparición de tacos (sobre las plataformas)
+    const tacoSpawns = [
+      { x: 5, y: 1.75, z: 0 },
+      { x: 10, y: 2.75, z: 5 },
+      { x: 0, y: 2.25, z: -8 },
+      { x: -8, y: 3.25, z: -5 },
+      { x: -5, y: 1.75, z: 8 },
+      { x: 8, y: 3.75, z: -8 },
+      { x: 15, y: 2.25, z: -10 },
+      { x: -15, y: 2.75, z: 10 },
+      { x: -12, y: 3.75, z: -12 },
+      { x: 18, y: 3.25, z: 8 },
+      { x: 20, y: 1.75, z: 15 },
+      { x: -18, y: 2.25, z: -8 },
+      { x: 12, y: 4.75, z: -15 },
+      { x: -10, y: 1.75, z: 15 },
+      { x: 25, y: 3.75, z: 0 },
+      { x: -20, y: 3.25, z: 5 },
+      { x: 8, y: 2.75, z: 20 },
+      { x: -8, y: 4.25, z: -18 },
+      { x: 0, y: 2.75, z: 22 },
+      { x: 15, y: 1.75, z: -20 },
     ];
 
-    for (const spawn of supplySpawns) {
-      const supply = new Ingredient(this.engine, {
-        type: spawn.type,
+    for (const spawn of tacoSpawns) {
+      const taco = new Ingredient(this.engine, {
+        type: IngredientType.TACO,
         position: new THREE.Vector3(spawn.x, spawn.y, spawn.z),
       });
-      this.supplies.push(supply);
+      this.tacos.push(taco);
     }
   }
 
@@ -135,19 +135,19 @@ export class PlatformerGame implements Game {
     // Actualizar jugador (maneja entrada y movimiento)
     this.player.update(deltaTime, this.platforms);
 
-    // Actualizar suministros
-    for (const supply of this.supplies) {
-      if (!supply.isCollected()) {
-        supply.update(deltaTime);
+    // Actualizar tacos
+    for (const taco of this.tacos) {
+      if (!taco.isCollected()) {
+        taco.update(deltaTime);
 
         // Verificar colisión con jugador
         const playerPos = this.player.getPosition();
         const playerRadius = this.player.getRadius();
-        if (supply.checkCollision(playerPos, playerRadius)) {
-          // Agregar suministro a la pila del jugador
-          const supplyMesh = supply.createMeshForPlayer();
-          const supplyHeight = supply.getHeight();
-          this.player.addSupply(supplyMesh, supplyHeight);
+        if (taco.checkCollision(playerPos, playerRadius)) {
+          // Agregar taco a la pila del jugador
+          const tacoMesh = taco.createMeshForPlayer();
+          const tacoHeight = taco.getHeight();
+          this.player.addTaco(tacoMesh, tacoHeight);
         }
       }
     }
@@ -162,8 +162,8 @@ export class PlatformerGame implements Game {
     for (const platform of this.platforms) {
       platform.dispose();
     }
-    for (const supply of this.supplies) {
-      supply.dispose();
+    for (const taco of this.tacos) {
+      taco.dispose();
     }
     console.log('[PlatformerGame] Liberado');
   }

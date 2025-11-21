@@ -1,19 +1,14 @@
 /**
- * AI-EDITABLE: Objetos Recolectables de la Revolución
+ * AI-EDITABLE: Objetos Recolectables - Tacos
  *
- * Este archivo define objetos recolectables que el revolucionario puede recoger.
+ * Este archivo define objetos recolectables que la mujer bailando puede recoger.
  */
 
 import * as THREE from 'three';
 import type { Engine } from '../../engine/Engine';
 
 export enum IngredientType {
-  BALA = 'bala',
-  MUNICION = 'municion',
-  DOCUMENTO = 'documento',
-  BANDERA = 'bandera',
-  MEDALLA = 'medalla',
-  CARTUCHO = 'cartucho',
+  TACO = 'taco',
 }
 
 interface IngredientConfig {
@@ -23,7 +18,7 @@ interface IngredientConfig {
 
 export class Ingredient {
   private engine: Engine;
-  private mesh: THREE.Mesh;
+  private mesh: THREE.Mesh | THREE.Group;
   private type: IngredientType;
   private position: THREE.Vector3;
   private collected: boolean = false;
@@ -31,37 +26,39 @@ export class Ingredient {
   private floatOffset: number = 0;
   private floatSpeed: number = 0.001;
 
-  // Propiedades de los objetos de la revolución
+  // Propiedades de los tacos
   private static readonly INGREDIENT_CONFIGS = {
-    [IngredientType.BALA]: {
-      color: 0x8B7355, // Color dorado/cobre de las balas
-      height: 0.15,
-      geometry: () => new THREE.CylinderGeometry(0.1, 0.1, 0.15, 8),
-    },
-    [IngredientType.MUNICION]: {
-      color: 0x2F4F4F, // Color gris oscuro de la munición
+    [IngredientType.TACO]: {
+      color: 0xFFD700, // Color dorado de la tortilla
       height: 0.2,
-      geometry: () => new THREE.BoxGeometry(0.3, 0.2, 0.2),
-    },
-    [IngredientType.DOCUMENTO]: {
-      color: 0xFFF8DC, // Color beige del papel
-      height: 0.05,
-      geometry: () => new THREE.BoxGeometry(0.4, 0.05, 0.3),
-    },
-    [IngredientType.BANDERA]: {
-      color: 0x006847, // Color verde de la bandera mexicana
-      height: 0.3,
-      geometry: () => new THREE.BoxGeometry(0.1, 0.3, 0.4),
-    },
-    [IngredientType.MEDALLA]: {
-      color: 0xFFD700, // Color dorado de las medallas
-      height: 0.1,
-      geometry: () => new THREE.CylinderGeometry(0.2, 0.2, 0.1, 16),
-    },
-    [IngredientType.CARTUCHO]: {
-      color: 0x654321, // Color café de los cartuchos
-      height: 0.25,
-      geometry: () => new THREE.CylinderGeometry(0.12, 0.12, 0.25, 8),
+      geometry: () => {
+        // Crear forma de taco (tortilla doblada en forma de U)
+        const group = new THREE.Group();
+        
+        // Tortilla (forma de U usando un cilindro parcialmente cortado)
+        // Usar un torus cortado para simular la forma de taco
+        const tortillaGeometry = new THREE.TorusGeometry(0.15, 0.05, 8, 16, Math.PI);
+        const tortillaMaterial = new THREE.MeshStandardMaterial({
+          color: 0xFFD700, // Dorado de la tortilla
+          roughness: 0.7,
+        });
+        const tortilla = new THREE.Mesh(tortillaGeometry, tortillaMaterial);
+        tortilla.rotation.z = Math.PI / 2;
+        tortilla.rotation.x = Math.PI / 2;
+        group.add(tortilla);
+        
+        // Relleno (carne/vegetales) - forma simple
+        const fillingGeometry = new THREE.BoxGeometry(0.25, 0.12, 0.1);
+        const fillingMaterial = new THREE.MeshStandardMaterial({
+          color: 0x8B4513, // Color café de la carne
+          roughness: 0.8,
+        });
+        const filling = new THREE.Mesh(fillingGeometry, fillingMaterial);
+        filling.position.y = 0.05;
+        group.add(filling);
+        
+        return group;
+      },
     },
   };
 
@@ -71,17 +68,33 @@ export class Ingredient {
     this.position = config.position.clone();
 
     const config_data = Ingredient.INGREDIENT_CONFIGS[config.type];
-    const geometry = config_data.geometry();
-    const material = new THREE.MeshStandardMaterial({
-      color: config_data.color,
-      roughness: 0.6,
-      metalness: config.type === IngredientType.CHEESE ? 0.3 : 0,
-    });
-
-    this.mesh = new THREE.Mesh(geometry, material);
-    this.mesh.position.copy(this.position);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
+    const geometryResult = config_data.geometry();
+    
+    // Si es un grupo (como el taco), usar el grupo directamente
+    if (geometryResult instanceof THREE.Group) {
+      this.mesh = geometryResult as any; // El grupo se comporta como mesh para posicionamiento
+      this.mesh.position.copy(this.position);
+      this.mesh.castShadow = true;
+      this.mesh.receiveShadow = true;
+      
+      // Aplicar sombras a todos los hijos
+      geometryResult.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+    } else {
+      const material = new THREE.MeshStandardMaterial({
+        color: config_data.color,
+        roughness: 0.6,
+        metalness: 0,
+      });
+      this.mesh = new THREE.Mesh(geometryResult as THREE.BufferGeometry, material);
+      this.mesh.position.copy(this.position);
+      this.mesh.castShadow = true;
+      this.mesh.receiveShadow = true;
+    }
 
     // Offset aleatorio de flotación para variación
     this.floatOffset = Math.random() * Math.PI * 2;
@@ -127,19 +140,36 @@ export class Ingredient {
     return this.type;
   }
 
-  createMeshForPlayer(): THREE.Mesh {
+  createMeshForPlayer(): THREE.Mesh | THREE.Group {
     // Crear un nuevo mesh para la pila del jugador (ya que removimos el original)
     const config_data = Ingredient.INGREDIENT_CONFIGS[this.type];
-    const geometry = config_data.geometry();
-    const material = new THREE.MeshStandardMaterial({
-      color: config_data.color,
-      roughness: 0.6,
-      metalness: this.type === IngredientType.MEDALLA ? 0.5 : 0,
-    });
-
-    const mesh = new THREE.Mesh(geometry, material);
-    mesh.castShadow = true;
-    return mesh;
+    const geometryResult = config_data.geometry();
+    
+    // Si es un grupo (como el taco), clonarlo
+    if (geometryResult instanceof THREE.Group) {
+      const clonedGroup = geometryResult.clone() as any;
+      clonedGroup.castShadow = true;
+      clonedGroup.receiveShadow = true;
+      
+      // Aplicar sombras a todos los hijos
+      clonedGroup.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+      
+      return clonedGroup;
+    } else {
+      const material = new THREE.MeshStandardMaterial({
+        color: config_data.color,
+        roughness: 0.6,
+        metalness: 0,
+      });
+      const mesh = new THREE.Mesh(geometryResult as THREE.BufferGeometry, material);
+      mesh.castShadow = true;
+      return mesh;
+    }
   }
 
   getHeight(): number {
@@ -149,8 +179,28 @@ export class Ingredient {
   dispose(): void {
     if (!this.collected && this.mesh) {
       this.engine.scene.remove(this.mesh);
-      this.mesh.geometry.dispose();
-      (this.mesh.material as THREE.Material).dispose();
+      
+      // Si es un grupo, liberar todos los hijos
+      if (this.mesh instanceof THREE.Group) {
+        this.mesh.traverse((child) => {
+          if (child instanceof THREE.Mesh) {
+            child.geometry.dispose();
+            if (Array.isArray(child.material)) {
+              child.material.forEach((mat) => mat.dispose());
+            } else {
+              child.material.dispose();
+            }
+          }
+        });
+      } else {
+        // Si es un mesh simple
+        this.mesh.geometry.dispose();
+        if (Array.isArray(this.mesh.material)) {
+          this.mesh.material.forEach((mat) => mat.dispose());
+        } else {
+          this.mesh.material.dispose();
+        }
+      }
     }
   }
 }
