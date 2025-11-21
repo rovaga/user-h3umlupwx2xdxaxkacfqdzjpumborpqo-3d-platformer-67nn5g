@@ -44,7 +44,7 @@ export class PikachuBoatGame implements Game {
     // Setup camera to follow boat
     this.setupCamera();
 
-    console.log('[PikachuBoatGame] Initialized - ¡Pikachu está listo para descubrir nuevas tierras!');
+    console.log('[PikachuBoatGame] Initialized - ¡El gato está listo para descubrir nuevas tierras!');
   }
 
   private createSkybox(): void {

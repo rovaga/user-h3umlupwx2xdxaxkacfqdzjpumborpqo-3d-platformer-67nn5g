@@ -79,80 +79,120 @@ export class Boat {
     sail.position.set(0, 1.5, 0.1);
     this.group.add(sail);
 
-    // Create Pikachu (simplified version with geometric shapes)
+    // Create Cat (simplified version with geometric shapes)
     this.pikachuMesh = new THREE.Group();
 
-    // Pikachu body (yellow sphere)
+    // Cat body (orange/brown sphere)
     const bodyGeometry = new THREE.SphereGeometry(0.4, 16, 16);
-    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700 }); // Gold/yellow
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xff8c42 }); // Orange
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
     body.position.y = 1.2;
     body.castShadow = true;
     this.pikachuMesh.add(body);
 
-    // Pikachu head (larger yellow sphere)
+    // Cat head (larger sphere)
     const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
-    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffd700 });
+    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xff8c42 });
     const head = new THREE.Mesh(headGeometry, headMaterial);
     head.position.y = 1.8;
     head.castShadow = true;
     this.pikachuMesh.add(head);
 
-    // Pikachu ears (two red triangles)
-    const earGeometry = new THREE.ConeGeometry(0.15, 0.6, 3);
-    const earMaterial = new THREE.MeshStandardMaterial({ color: 0xff0000 });
+    // Cat ears (two triangular ears)
+    const earGeometry = new THREE.ConeGeometry(0.12, 0.5, 3);
+    const earMaterial = new THREE.MeshStandardMaterial({ color: 0xff8c42 });
     
     const ear1 = new THREE.Mesh(earGeometry, earMaterial);
-    ear1.position.set(-0.3, 2.1, 0);
-    ear1.rotation.z = -0.3;
+    ear1.position.set(-0.25, 2.15, 0);
+    ear1.rotation.z = -0.4;
     ear1.castShadow = true;
     this.pikachuMesh.add(ear1);
 
     const ear2 = new THREE.Mesh(earGeometry, earMaterial);
-    ear2.position.set(0.3, 2.1, 0);
-    ear2.rotation.z = 0.3;
+    ear2.position.set(0.25, 2.15, 0);
+    ear2.rotation.z = 0.4;
     ear2.castShadow = true;
     this.pikachuMesh.add(ear2);
 
-    // Pikachu eyes (black spheres)
-    const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
-    const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    // Cat eyes (green/yellow spheres)
+    const eyeGeometry = new THREE.SphereGeometry(0.1, 8, 8);
+    const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 }); // Yellow/green
+    const eyePupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
     
     const eye1 = new THREE.Mesh(eyeGeometry, eyeMaterial);
     eye1.position.set(-0.15, 1.85, 0.4);
     this.pikachuMesh.add(eye1);
+    
+    const pupil1 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyePupilMaterial);
+    pupil1.position.set(-0.15, 1.85, 0.45);
+    this.pikachuMesh.add(pupil1);
 
     const eye2 = new THREE.Mesh(eyeGeometry, eyeMaterial);
     eye2.position.set(0.15, 1.85, 0.4);
     this.pikachuMesh.add(eye2);
+    
+    const pupil2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 8, 8), eyePupilMaterial);
+    pupil2.position.set(0.15, 1.85, 0.45);
+    this.pikachuMesh.add(pupil2);
 
-    // Pikachu nose (small black triangle)
+    // Cat nose (small pink triangle)
     const noseGeometry = new THREE.ConeGeometry(0.05, 0.1, 3);
-    const noseMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const noseMaterial = new THREE.MeshStandardMaterial({ color: 0xffb6c1 }); // Pink
     const nose = new THREE.Mesh(noseGeometry, noseMaterial);
     nose.position.set(0, 1.75, 0.45);
     nose.rotation.x = Math.PI;
     this.pikachuMesh.add(nose);
 
-    // Pikachu cheeks (red circles)
-    const cheekGeometry = new THREE.CircleGeometry(0.12, 8);
-    const cheekMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
+    // Cat whiskers (white lines)
+    const whiskerGeometry = new THREE.CylinderGeometry(0.01, 0.01, 0.3, 4);
+    const whiskerMaterial = new THREE.MeshStandardMaterial({ color: 0xffffff });
     
-    const cheek1 = new THREE.Mesh(cheekGeometry, cheekMaterial);
-    cheek1.position.set(-0.4, 1.7, 0.35);
-    cheek1.rotation.y = -Math.PI / 4;
-    this.pikachuMesh.add(cheek1);
+    // Left whiskers
+    const whisker1 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+    whisker1.position.set(-0.3, 1.75, 0.35);
+    whisker1.rotation.z = Math.PI / 6;
+    this.pikachuMesh.add(whisker1);
+    
+    const whisker2 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+    whisker2.position.set(-0.3, 1.7, 0.35);
+    whisker2.rotation.z = 0;
+    this.pikachuMesh.add(whisker2);
+    
+    const whisker3 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+    whisker3.position.set(-0.3, 1.65, 0.35);
+    whisker3.rotation.z = -Math.PI / 6;
+    this.pikachuMesh.add(whisker3);
 
-    const cheek2 = new THREE.Mesh(cheekGeometry, cheekMaterial);
-    cheek2.position.set(0.4, 1.7, 0.35);
-    cheek2.rotation.y = Math.PI / 4;
-    this.pikachuMesh.add(cheek2);
+    // Right whiskers
+    const whisker4 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+    whisker4.position.set(0.3, 1.75, 0.35);
+    whisker4.rotation.z = -Math.PI / 6;
+    this.pikachuMesh.add(whisker4);
+    
+    const whisker5 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+    whisker5.position.set(0.3, 1.7, 0.35);
+    whisker5.rotation.z = 0;
+    this.pikachuMesh.add(whisker5);
+    
+    const whisker6 = new THREE.Mesh(whiskerGeometry, whiskerMaterial);
+    whisker6.position.set(0.3, 1.65, 0.35);
+    whisker6.rotation.z = Math.PI / 6;
+    this.pikachuMesh.add(whisker6);
 
-    // Position Pikachu on boat
+    // Cat tail (curved cylinder)
+    const tailGeometry = new THREE.CylinderGeometry(0.08, 0.12, 0.8, 8);
+    const tailMaterial = new THREE.MeshStandardMaterial({ color: 0xff8c42 });
+    const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+    tail.position.set(0, 0.8, -0.4);
+    tail.rotation.x = Math.PI / 4;
+    tail.castShadow = true;
+    this.pikachuMesh.add(tail);
+
+    // Position Cat on boat
     this.pikachuMesh.position.set(0, 0, 0);
     this.group.add(this.pikachuMesh);
 
-    console.log('[Boat] Created with Pikachu');
+    console.log('[Boat] Created with Cat');
   }
 
   update(deltaTime: number): void {
@@ -220,11 +260,11 @@ export class Boat {
     const oceanHeight = this.ocean.getHeightAt(this.position.x, this.position.z);
     this.position.y = oceanHeight + 0.8;
 
-    // Animate Pikachu (bobbing with waves)
+    // Animate Cat (bobbing with waves)
     const bobAmount = Math.sin(Date.now() * 0.003) * 0.1;
     this.pikachuMesh.position.y = bobAmount;
 
-    // Rotate Pikachu slightly based on boat movement
+    // Rotate Cat slightly based on boat movement
     const tilt = this.velocity.length() * 0.05;
     this.pikachuMesh.rotation.z = Math.sin(Date.now() * 0.005) * tilt;
   }
