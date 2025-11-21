@@ -16,6 +16,7 @@
 import type { Engine } from '../engine/Engine';
 import type { Game } from '../engine/Types';
 import { PikachuBoatGame } from './pikachu-boat/PikachuBoatGame';
+import { CharmanderForestGame } from './charmander-forest/CharmanderForestGame';
 
 /**
  * Main game creation function.
@@ -30,6 +31,6 @@ export function createGame(engine: Engine): Game {
   // const params = new URLSearchParams(window.location.search);
   // const mode = params.get('mode') || 'pikachu-boat';
 
-  // Pikachu en un barco descubriendo nuevas tierras
-  return new PikachuBoatGame(engine);
+  // Charmander en un bosque sobreviviendo
+  return new CharmanderForestGame(engine);
 }
