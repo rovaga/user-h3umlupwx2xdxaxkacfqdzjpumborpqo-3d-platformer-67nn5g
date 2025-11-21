@@ -7,6 +7,7 @@
 import * as THREE from 'three';
 import type { Engine } from '../../engine/Engine';
 import type { Platform } from './Platform';
+import type { Player } from './Player';
 
 export class Boss {
   private engine: Engine;
@@ -25,20 +26,34 @@ export class Boss {
   private healthBarContainer: HTMLDivElement | null = null;
   private static bossCounter: number = 0;
   private bossId: number;
+  
+  // Final boss properties
+  private isFinalBoss: boolean = false;
+  private explosionTimer: number = 0;
+  private explosionInterval: number = 20.0; // 20 seconds between explosions
+  private explosionDamage: number = 999;
 
-  constructor(engine: Engine, spawnPosition: THREE.Vector3) {
+  constructor(engine: Engine, spawnPosition: THREE.Vector3, isFinalBoss: boolean = false) {
     this.engine = engine;
     this.position = spawnPosition.clone();
     this.velocity = new THREE.Vector3(0, 0, 0);
     this.bossId = Boss.bossCounter++;
+    this.isFinalBoss = isFinalBoss;
+    
+    if (isFinalBoss) {
+      // Final boss has different appearance - make it larger and darker
+      this.health = 600;
+      this.maxHealth = 600;
+    }
 
     // Create boss mesh (larger, purple/darker red)
     this.mesh = new THREE.Group();
     
-    // Main body (larger purple sphere)
-    const bodyGeometry = new THREE.SphereGeometry(0.7, 16, 16);
+    // Main body (larger purple sphere, or darker for final boss)
+    const bodySize = isFinalBoss ? 1.0 : 0.7;
+    const bodyGeometry = new THREE.SphereGeometry(bodySize, 16, 16);
     const bodyMaterial = new THREE.MeshStandardMaterial({
-      color: 0x8b008b, // Purple color for boss
+      color: isFinalBoss ? 0x4b0082 : 0x8b008b, // Darker purple for final boss
       roughness: 0.7,
     });
     const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
@@ -144,7 +159,8 @@ export class Boss {
     }
     
     if (healthText) {
-      healthText.textContent = `BOSS ${Math.ceil(this.health)}/${this.maxHealth}`;
+      const label = this.isFinalBoss ? 'FINAL BOSS' : 'BOSS';
+      healthText.textContent = `${label} ${Math.ceil(this.health)}/${this.maxHealth}`;
     }
 
     // Update position based on boss position
@@ -271,6 +287,41 @@ export class Boss {
 
   getAttackRange(): number {
     return this.attackRange;
+  }
+  
+  setMaxHealth(maxHealth: number): void {
+    this.maxHealth = maxHealth;
+  }
+  
+  setHealth(health: number): void {
+    this.health = health;
+    if (this.health > this.maxHealth) {
+      this.health = this.maxHealth;
+    }
+    if (this.health < 0) {
+      this.health = 0;
+    }
+  }
+  
+  updateExplosion(deltaTime: number, playerPosition: THREE.Vector3, player: Player, isPlayerInvincible: boolean = false): void {
+    if (!this.isFinalBoss || this.health <= 0) return;
+    
+    // Update explosion timer
+    this.explosionTimer += deltaTime;
+    
+    if (this.explosionTimer >= this.explosionInterval) {
+      // Trigger explosion - deals 999 damage to player (full map range)
+      // Don't damage if player is invincible
+      if (!isPlayerInvincible) {
+        player.takeDamage(this.explosionDamage);
+        console.log('[Boss] Final boss explosion! Player took 999 damage!');
+      } else {
+        console.log('[Boss] Final boss explosion! Player is invincible!');
+      }
+      this.explosionTimer = 0;
+      
+      // Visual effect could be added here (screen flash, particles, etc.)
+    }
   }
 
   dispose(): void {

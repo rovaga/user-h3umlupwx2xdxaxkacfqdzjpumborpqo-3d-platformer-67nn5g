@@ -482,6 +482,14 @@ export class Player {
     
     console.log(`[Player] Took ${damage} damage. Health: ${this.health}/${this.maxHealth}`);
   }
+  
+  heal(amount: number): void {
+    this.health += amount;
+    if (this.health > this.maxHealth) {
+      this.health = this.maxHealth;
+    }
+    console.log(`[Player] Healed ${amount} HP. Health: ${this.health}/${this.maxHealth}`);
+  }
 
   getHealth(): number {
     return this.health;
