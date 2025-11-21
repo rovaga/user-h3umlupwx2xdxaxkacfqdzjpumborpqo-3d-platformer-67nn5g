@@ -21,6 +21,9 @@ export class PlatformerGame implements Game {
   constructor(engine: Engine) {
     this.engine = engine;
 
+    // Set sky background to match Mexican flag theme (light blue sky)
+    engine.scene.background = new THREE.Color(0x87ceeb);
+
     // Setup lighting
     engine.createDefaultLighting();
 
@@ -39,10 +42,47 @@ export class PlatformerGame implements Game {
     console.log('[PlatformerGame] Initialized');
   }
 
+  /**
+   * Creates a Mexican flag texture (green, white, red vertical stripes)
+   */
+  private createMexicanFlagTexture(width: number = 512, height: number = 512): THREE.Texture {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d')!;
+
+    // Mexican flag colors
+    const green = '#006847';
+    const white = '#FFFFFF';
+    const red = '#CE1126';
+
+    // Draw three vertical stripes
+    const stripeWidth = width / 3;
+    
+    // Green stripe (left)
+    ctx.fillStyle = green;
+    ctx.fillRect(0, 0, stripeWidth, height);
+    
+    // White stripe (middle)
+    ctx.fillStyle = white;
+    ctx.fillRect(stripeWidth, 0, stripeWidth, height);
+    
+    // Red stripe (right)
+    ctx.fillStyle = red;
+    ctx.fillRect(stripeWidth * 2, 0, stripeWidth, height);
+
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(10, 10); // Repeat the pattern
+    return texture;
+  }
+
   private createGround(): void {
     const groundGeometry = new THREE.BoxGeometry(100, 1, 100);
+    const mexicanFlagTexture = this.createMexicanFlagTexture();
     const groundMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4a7c59,
+      map: mexicanFlagTexture,
       roughness: 0.8,
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
@@ -62,6 +102,7 @@ export class PlatformerGame implements Game {
   }
 
   private createPlatforms(): void {
+    const mexicanFlagTexture = this.createMexicanFlagTexture();
     const platformConfigs = [
       { x: 5, y: 1, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
       { x: 10, y: 2, z: 5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
@@ -87,10 +128,13 @@ export class PlatformerGame implements Game {
     ];
 
     for (const config of platformConfigs) {
+      // Create a new texture instance for each platform with appropriate repeat
+      const platformTexture = this.createMexicanFlagTexture();
+      platformTexture.repeat.set(2, 2); // Smaller repeat for platforms
       const platform = new Platform(this.engine, {
         position: new THREE.Vector3(config.x, config.y, config.z),
         size: new THREE.Vector3(config.w, config.h, config.d),
-        color: config.color,
+        texture: platformTexture,
       });
       this.platforms.push(platform);
     }

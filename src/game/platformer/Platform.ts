@@ -11,6 +11,7 @@ interface PlatformConfig {
   position: THREE.Vector3;
   size: THREE.Vector3;
   color?: number;
+  texture?: THREE.Texture;
   visible?: boolean;
 }
 
@@ -48,10 +49,17 @@ export class Platform {
         config.size.y,
         config.size.z
       );
-      const material = new THREE.MeshStandardMaterial({
-        color: config.color ?? 0x8b4513,
+      const materialConfig: THREE.MeshStandardMaterialParameters = {
         roughness: 0.7,
-      });
+      };
+      
+      if (config.texture) {
+        materialConfig.map = config.texture;
+      } else {
+        materialConfig.color = config.color ?? 0x8b4513;
+      }
+      
+      const material = new THREE.MeshStandardMaterial(materialConfig);
       this.mesh = new THREE.Mesh(geometry, material);
       this.mesh.position.copy(config.position);
       this.mesh.castShadow = true;
