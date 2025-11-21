@@ -10,11 +10,13 @@ import type { Engine } from '../../engine/Engine';
 import type { Game } from '../../engine/Types';
 import { Player } from './Player';
 import { Platform } from './Platform';
+import { House } from './House';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
+  private houses: House[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -27,6 +29,9 @@ export class PlatformerGame implements Game {
 
     // Create platforms
     this.createPlatforms();
+
+    // Create houses near spawn
+    this.createHouses();
 
     // Create player
     this.player = new Player(engine);
@@ -91,6 +96,27 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private createHouses(): void {
+    // Create houses near spawn point (0, 0, 0)
+    const houseConfigs = [
+      { x: -6, z: -4, size: new THREE.Vector3(3, 3, 3), color: 0xd4a574, roofColor: 0x8b4513 },
+      { x: -2, z: -6, size: new THREE.Vector3(2.5, 2.5, 2.5), color: 0xe6d5b8, roofColor: 0x654321 },
+      { x: 4, z: -5, size: new THREE.Vector3(3.5, 3.5, 3.5), color: 0xc9a87c, roofColor: 0x8b4513 },
+      { x: 6, z: 3, size: new THREE.Vector3(2.8, 2.8, 2.8), color: 0xd4a574, roofColor: 0x654321 },
+      { x: -4, z: 4, size: new THREE.Vector3(3, 3, 3), color: 0xe6d5b8, roofColor: 0x8b4513 },
+    ];
+
+    for (const config of houseConfigs) {
+      const house = new House(this.engine, {
+        position: new THREE.Vector3(config.x, 0, config.z),
+        size: config.size,
+        color: config.color,
+        roofColor: config.roofColor,
+      });
+      this.houses.push(house);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -104,6 +130,9 @@ export class PlatformerGame implements Game {
     this.player.dispose();
     for (const platform of this.platforms) {
       platform.dispose();
+    }
+    for (const house of this.houses) {
+      house.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }
