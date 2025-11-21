@@ -17,7 +17,7 @@ export class MexicanRailroadGame implements Game {
   private engine: Engine;
   private player: RailroadPlayer;
   private tracks: RailroadTrack[] = [];
-  private trainCar: TrainCar;
+  private trainCars: TrainCar[] = [];
   private tacos: Taco[] = [];
 
   constructor(engine: Engine) {
@@ -36,11 +36,11 @@ export class MexicanRailroadGame implements Game {
     // Create railroad tracks in a loop
     this.createTracks();
 
-    // Create train car (pass all tracks for continuous loop)
-    this.trainCar = new TrainCar(this.engine, this.tracks, 0);
+    // Create a long train with multiple cars
+    this.createTrain();
 
-    // Create player on the train
-    this.player = new RailroadPlayer(this.engine, this.trainCar);
+    // Create player on the first train car
+    this.player = new RailroadPlayer(this.engine, this.trainCars[0]);
 
     // Create tacos along the tracks
     this.createTacos();
@@ -105,6 +105,20 @@ export class MexicanRailroadGame implements Game {
     }
   }
 
+  private createTrain(): void {
+    // Create a long train with 8 cars spaced evenly along the track
+    const numberOfCars = 8;
+    const spacing = 1.0 / numberOfCars; // Space cars evenly along the track
+    
+    for (let i = 0; i < numberOfCars; i++) {
+      const startProgress = i * spacing;
+      const trainCar = new TrainCar(this.engine, this.tracks, startProgress);
+      this.trainCars.push(trainCar);
+    }
+    
+    console.log(`[MexicanRailroadGame] Created long train with ${numberOfCars} cars`);
+  }
+
   private createTacos(): void {
     // Place tacos along the tracks at various positions
     const tacoSpawns = [
@@ -140,8 +154,10 @@ export class MexicanRailroadGame implements Game {
   }
 
   update(deltaTime: number): void {
-    // Update train car
-    this.trainCar.update(deltaTime);
+    // Update all train cars
+    for (const trainCar of this.trainCars) {
+      trainCar.update(deltaTime);
+    }
 
     // Update player (handles input and movement on train)
     this.player.update(deltaTime);
@@ -170,7 +186,9 @@ export class MexicanRailroadGame implements Game {
 
   dispose(): void {
     this.player.dispose();
-    this.trainCar.dispose();
+    for (const trainCar of this.trainCars) {
+      trainCar.dispose();
+    }
     for (const track of this.tracks) {
       track.dispose();
     }
