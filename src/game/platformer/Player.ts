@@ -159,6 +159,11 @@ export class Player {
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
+    // Check if player is dead and respawn
+    if (this.isDead()) {
+      this.respawn();
+    }
+
     this.handleInput();
     this.applyPhysics();
     this.checkCollisions(platforms);
@@ -177,6 +182,18 @@ export class Player {
 
     // Update health bar
     this.updateHealthBar();
+  }
+
+  private respawn(): void {
+    // Reset position to spawn
+    this.position.set(0, 2, 0);
+    this.velocity.set(0, 0, 0);
+    
+    // Restore full health
+    this.health = this.maxHealth;
+    this.damageCooldown = 0;
+    
+    console.log('[Player] Respawned with full health');
   }
 
   getLatestProjectile(): Projectile | null {

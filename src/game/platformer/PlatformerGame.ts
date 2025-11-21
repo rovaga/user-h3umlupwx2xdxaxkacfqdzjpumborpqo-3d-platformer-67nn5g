@@ -14,6 +14,7 @@ import { Ingredient, IngredientType } from './Ingredient';
 import { Weapon, WeaponType } from './Weapon';
 import { Projectile } from './Projectile';
 import { Enemy } from './Enemy';
+import { Boss } from './Boss';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
@@ -23,10 +24,16 @@ export class PlatformerGame implements Game {
   private weapons: Weapon[] = [];
   private projectiles: Projectile[] = [];
   private enemies: Enemy[] = [];
+  private bosses: Boss[] = [];
   private enemySpawnTimer: number = 0;
   private enemySpawnInterval: number = 1.0; // Spawn 1 enemy per second
+  private bossSpawnTimer: number = 0;
+  private bossSpawnInterval: number = 30.0; // Spawn boss every 30 seconds
   private meleeAttackActive: boolean = false;
-  private meleeHitEnemies: Set<Enemy> = new Set();
+  private meleeHitEnemies: Set<Enemy | Boss> = new Set();
+  private otherWeaponCooldown: number = 0;
+  private otherWeaponCooldownTime: number = 1.32; // 1.32 seconds cooldown for other weapons
+  private lastOtherWeaponClickState: boolean = false;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -190,6 +197,18 @@ export class PlatformerGame implements Game {
       this.enemySpawnTimer = 0;
     }
 
+    // Spawn boss
+    this.bossSpawnTimer += deltaTime;
+    if (this.bossSpawnTimer >= this.bossSpawnInterval) {
+      this.spawnBoss();
+      this.bossSpawnTimer = 0;
+    }
+
+    // Update other weapon cooldown
+    if (this.otherWeaponCooldown > 0) {
+      this.otherWeaponCooldown -= deltaTime;
+    }
+
     // Update enemies
     const playerPosition = this.player.getPosition();
     for (let i = this.enemies.length - 1; i >= 0; i--) {
@@ -207,6 +226,25 @@ export class PlatformerGame implements Game {
       const distanceToPlayer = enemy.getPosition().distanceTo(playerPosition);
       if (distanceToPlayer <= enemy.getAttackRange() && enemy.canAttack()) {
         this.player.takeDamage(enemy.getAttackDamage());
+      }
+    }
+
+    // Update bosses
+    for (let i = this.bosses.length - 1; i >= 0; i--) {
+      const boss = this.bosses[i];
+      
+      if (boss.isDead()) {
+        boss.dispose();
+        this.bosses.splice(i, 1);
+        continue;
+      }
+
+      boss.update(deltaTime, this.platforms, playerPosition);
+
+      // Check if boss can attack player
+      const distanceToPlayer = boss.getPosition().distanceTo(playerPosition);
+      if (distanceToPlayer <= boss.getAttackRange() && boss.canAttack()) {
+        this.player.takeDamage(boss.getAttackDamage());
       }
     }
 
@@ -267,6 +305,20 @@ export class PlatformerGame implements Game {
           break;
         }
       }
+
+      // Check projectile collision with bosses
+      for (let j = this.bosses.length - 1; j >= 0; j--) {
+        const boss = this.bosses[j];
+        if (boss.isDead()) continue;
+
+        const distance = projectilePos.distanceTo(boss.getPosition());
+        if (distance < boss.getRadius() + 0.1) {
+          boss.takeDamage(projectile.getDamage());
+          projectile.dispose();
+          this.projectiles.splice(i, 1);
+          break;
+        }
+      }
     }
 
     // Check melee attack collision with enemies
@@ -284,6 +336,70 @@ export class PlatformerGame implements Game {
           this.meleeHitEnemies.add(enemy);
         }
       }
+
+      // Check melee attack collision with bosses
+      for (let i = this.bosses.length - 1; i >= 0; i--) {
+        const boss = this.bosses[i];
+        if (boss.isDead() || this.meleeHitEnemies.has(boss)) continue;
+
+        const distance = playerPos.distanceTo(boss.getPosition());
+        if (distance <= meleeRange) {
+          boss.takeDamage(currentWeapon.getDamage());
+          this.meleeHitEnemies.add(boss);
+        }
+      }
+    }
+
+    // Handle other weapons attack (75 damage per click, 1.32s cooldown)
+    this.handleOtherWeaponsAttack(playerPosition);
+  }
+
+  private handleOtherWeaponsAttack(playerPosition: THREE.Vector3): void {
+    // Check if player clicked and has other weapons (not currently equipped)
+    const input = this.engine.input;
+    const isMobile = this.engine.mobileInput.isMobileControlsActive();
+    
+    if (isMobile) return; // Only handle desktop clicks for now
+    
+    const mouseButtonPressed = input.isKeyPressed('Mouse0');
+    const currentWeapon = this.player.getCurrentWeapon();
+    
+    // Check if player has other collected weapons
+    const otherWeapons = this.weapons.filter(w => w.isCollected() && w !== currentWeapon);
+    
+    // Detect click (button just pressed, not held)
+    const isClick = mouseButtonPressed && !this.lastOtherWeaponClickState;
+    this.lastOtherWeaponClickState = mouseButtonPressed;
+    
+    if (isClick && otherWeapons.length > 0 && this.otherWeaponCooldown <= 0) {
+      // Deal 75 damage to all enemies and bosses in range
+      const attackRange = 5.0; // Range for other weapons attack
+      
+      // Damage enemies
+      for (let i = this.enemies.length - 1; i >= 0; i--) {
+        const enemy = this.enemies[i];
+        if (enemy.isDead()) continue;
+        
+        const distance = playerPosition.distanceTo(enemy.getPosition());
+        if (distance <= attackRange) {
+          enemy.takeDamage(75);
+        }
+      }
+      
+      // Damage bosses
+      for (let i = this.bosses.length - 1; i >= 0; i--) {
+        const boss = this.bosses[i];
+        if (boss.isDead()) continue;
+        
+        const distance = playerPosition.distanceTo(boss.getPosition());
+        if (distance <= attackRange) {
+          boss.takeDamage(75);
+        }
+      }
+      
+      // Set cooldown
+      this.otherWeaponCooldown = this.otherWeaponCooldownTime;
+      console.log('[PlatformerGame] Other weapons attack dealt 75 damage');
     }
   }
 
@@ -297,6 +413,19 @@ export class PlatformerGame implements Game {
 
     const enemy = new Enemy(this.engine, new THREE.Vector3(spawnX, spawnY, spawnZ));
     this.enemies.push(enemy);
+  }
+
+  private spawnBoss(): void {
+    // Spawn boss at random position around the map
+    const angle = Math.random() * Math.PI * 2;
+    const distance = 20 + Math.random() * 10; // Spawn 20-30 units away from center
+    const spawnX = Math.cos(angle) * distance;
+    const spawnZ = Math.sin(angle) * distance;
+    const spawnY = 3; // Spawn above ground
+
+    const boss = new Boss(this.engine, new THREE.Vector3(spawnX, spawnY, spawnZ));
+    this.bosses.push(boss);
+    console.log('[PlatformerGame] Boss spawned!');
   }
 
   onResize(width: number, height: number): void {
@@ -319,6 +448,9 @@ export class PlatformerGame implements Game {
     }
     for (const enemy of this.enemies) {
       enemy.dispose();
+    }
+    for (const boss of this.bosses) {
+      boss.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }
