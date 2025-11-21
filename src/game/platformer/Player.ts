@@ -36,19 +36,53 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player mesh (capsule)
-    const playerGeometry = new THREE.CapsuleGeometry(0.5, 1, 8, 16);
-    const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
-    this.mesh = new THREE.Mesh(playerGeometry, playerMaterial);
+    // Create cat body (main capsule)
+    const bodyGeometry = new THREE.CapsuleGeometry(0.4, 0.8, 8, 16);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 }); // Orange cat
+    this.mesh = new THREE.Mesh(bodyGeometry, bodyMaterial);
     this.mesh.castShadow = true;
     engine.scene.add(this.mesh);
 
-    // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.3, 0.6, 8);
+    // Create cat head (sphere)
+    const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ color: 0xffa500 });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 0.6;
+    head.castShadow = true;
+    this.mesh.add(head);
+
+    // Create cat ears (two triangles)
+    const earGeometry = new THREE.ConeGeometry(0.15, 0.3, 3);
+    const earMaterial = new THREE.MeshStandardMaterial({ color: 0xff8c00 });
+    
+    const leftEar = new THREE.Mesh(earGeometry, earMaterial);
+    leftEar.position.set(-0.2, 0.8, 0);
+    leftEar.rotation.z = -0.3;
+    leftEar.castShadow = true;
+    this.mesh.add(leftEar);
+
+    const rightEar = new THREE.Mesh(earGeometry, earMaterial);
+    rightEar.position.set(0.2, 0.8, 0);
+    rightEar.rotation.z = 0.3;
+    rightEar.castShadow = true;
+    this.mesh.add(rightEar);
+
+    // Create tail (elongated capsule)
+    const tailGeometry = new THREE.CapsuleGeometry(0.08, 0.6, 8, 8);
+    const tailMaterial = new THREE.MeshStandardMaterial({ color: 0xff8c00 });
+    const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+    tail.position.set(0, 0, -0.5);
+    tail.rotation.x = Math.PI / 6;
+    tail.castShadow = true;
+    this.mesh.add(tail);
+
+    // Create direction indicator (small yellow cone for nose direction)
+    const indicatorGeometry = new THREE.ConeGeometry(0.15, 0.3, 8);
     const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     this.indicator.rotation.x = Math.PI / 2;
-    this.indicator.position.z = 0.8;
+    this.indicator.position.z = 0.5;
+    this.indicator.position.y = 0.6;
     this.mesh.add(this.indicator);
 
     console.log('[Player] Created');
