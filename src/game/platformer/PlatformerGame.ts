@@ -11,12 +11,16 @@ import type { Game } from '../../engine/Types';
 import { Player } from './Player';
 import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
+import { Railway } from './Railway';
+import { Train } from './Train';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
+  private railways: Railway[] = [];
+  private trains: Train[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -35,6 +39,9 @@ export class PlatformerGame implements Game {
 
     // Create ingredients
     this.createIngredients();
+
+    // Create Mexican railroad system
+    this.createRailway();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -130,6 +137,48 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private createRailway(): void {
+    // Create multiple railway tracks across the map
+    const railwayConfigs = [
+      {
+        start: new THREE.Vector3(-30, 0, -10),
+        end: new THREE.Vector3(30, 0, -10),
+      },
+      {
+        start: new THREE.Vector3(-25, 0, 0),
+        end: new THREE.Vector3(25, 0, 0),
+      },
+      {
+        start: new THREE.Vector3(-20, 0, 10),
+        end: new THREE.Vector3(20, 0, 10),
+      },
+      {
+        start: new THREE.Vector3(-15, 0, -15),
+        end: new THREE.Vector3(15, 0, 15),
+      },
+    ];
+
+    for (const config of railwayConfigs) {
+      const railway = new Railway(this.engine, {
+        start: config.start,
+        end: config.end,
+        width: 2,
+      });
+      this.railways.push(railway);
+
+      // Create a train on this railway (not all railways need trains)
+      if (Math.random() > 0.3) {
+        const train = new Train(this.engine, {
+          railway: railway,
+          speed: 0.2 + Math.random() * 0.3, // Variable speeds
+        });
+        this.trains.push(train);
+      }
+    }
+
+    console.log(`[PlatformerGame] Created ${this.railways.length} railways and ${this.trains.length} trains`);
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -150,6 +199,11 @@ export class PlatformerGame implements Game {
         }
       }
     }
+
+    // Update trains
+    for (const train of this.trains) {
+      train.update(deltaTime);
+    }
   }
 
   onResize(width: number, height: number): void {
@@ -163,6 +217,12 @@ export class PlatformerGame implements Game {
     }
     for (const ingredient of this.ingredients) {
       ingredient.dispose();
+    }
+    for (const railway of this.railways) {
+      railway.dispose();
+    }
+    for (const train of this.trains) {
+      train.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }
