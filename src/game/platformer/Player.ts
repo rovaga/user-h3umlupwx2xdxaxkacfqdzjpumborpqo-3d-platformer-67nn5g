@@ -3,6 +3,7 @@
  *
  * This file contains the player character logic including movement,
  * camera controls, jumping, and collision detection.
+ * The player is represented as a taco al pastor (tortilla with al pastor meat).
  */
 
 import * as THREE from 'three';
@@ -12,9 +13,9 @@ import { IngredientType } from './Ingredient';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
-  private bunBottom: THREE.Mesh;
-  private bunTop: THREE.Mesh;
+  private mesh: THREE.Group; // Changed to Group to hold tortilla, meat, and ingredients
+  private tortilla: THREE.Mesh; // Bottom tortilla
+  private carnePastor: THREE.Mesh; // Al pastor meat
   private indicator: THREE.Mesh;
   private collectedIngredients: THREE.Mesh[] = [];
   private collectedIngredientTypes: IngredientType[] = []; // Track ingredient types
@@ -42,31 +43,31 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player group (hamburger)
+    // Create player group (taco al pastor)
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574, // Golden brown bun color
-      roughness: 0.7 
+    // Create tortilla (bottom - flat yellow/beige cylinder)
+    const tortillaGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.15, 16);
+    const tortillaMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xf4e4bc, // Light yellow/beige tortilla color
+      roughness: 0.8 
     });
-    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
-    this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
-    this.mesh.add(this.bunBottom);
+    this.tortilla = new THREE.Mesh(tortillaGeometry, tortillaMaterial);
+    this.tortilla.position.y = -0.075;
+    this.tortilla.castShadow = true;
+    this.mesh.add(this.tortilla);
 
-    // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
-    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574,
-      roughness: 0.7 
+    // Create carne al pastor (meat - reddish/orange cylinder)
+    const carneGeometry = new THREE.CylinderGeometry(0.45, 0.45, 0.3, 16);
+    const carneMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xd2691e, // Orange-red al pastor meat color
+      roughness: 0.6 
     });
-    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
-    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
-    this.mesh.add(this.bunTop);
+    this.carnePastor = new THREE.Mesh(carneGeometry, carneMaterial);
+    this.carnePastor.position.y = 0.075; // Will be adjusted as ingredients are added
+    this.carnePastor.castShadow = true;
+    this.mesh.add(this.carnePastor);
 
     // Create direction indicator (yellow cone)
     const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
@@ -74,10 +75,10 @@ export class Player {
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     this.indicator.rotation.x = Math.PI / 2;
     this.indicator.position.z = 0.6;
-    this.indicator.position.y = 0.25;
+    this.indicator.position.y = 0.3; // Positioned above meat
     this.mesh.add(this.indicator);
 
-    console.log('[Player] Created as hamburger');
+    console.log('[Player] Created as taco al pastor');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -180,7 +181,7 @@ export class Player {
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
+      const playerBottom = this.position.y - 0.15; // Adjusted for tortilla height
       const playerRadius = 0.5;
 
       // Check horizontal overlap
@@ -235,8 +236,8 @@ export class Player {
   }
 
   addIngredient(ingredientMesh: THREE.Mesh, height: number, ingredientType: IngredientType): void {
-    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
-    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
+    // Position ingredient on top of current stack (stack starts at top of carne al pastor, y=0.225)
+    ingredientMesh.position.y = this.ingredientStackHeight + height / 2 + 0.225;
     ingredientMesh.position.x = 0;
     ingredientMesh.position.z = 0;
     this.mesh.add(ingredientMesh);
@@ -244,9 +245,8 @@ export class Player {
     this.collectedIngredientTypes.push(ingredientType);
     this.ingredientStackHeight += height;
     
-    // Move top bun and indicator higher to sit on top of ingredients
-    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
-    this.indicator.position.y = this.ingredientStackHeight + 0.15;
+    // Move indicator higher to sit on top of ingredients
+    this.indicator.position.y = this.ingredientStackHeight + 0.225 + 0.15;
     
     console.log(`[Player] Added ingredient ${ingredientType}. Stack height: ${this.ingredientStackHeight}`);
   }
@@ -268,11 +268,10 @@ export class Player {
     this.collectedIngredientTypes = [];
     this.ingredientStackHeight = 0;
     
-    // Reset top bun and indicator positions
-    this.bunTop.position.y = 0.25;
-    this.indicator.position.y = 0.25;
+    // Reset indicator position
+    this.indicator.position.y = 0.3;
     
-    console.log('[Player] Ingredients reset - back to empty bun');
+    console.log('[Player] Ingredients reset - back to empty taco al pastor');
   }
 
   getPosition(): THREE.Vector3 {
@@ -285,10 +284,10 @@ export class Player {
 
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.bunBottom.geometry.dispose();
-    (this.bunBottom.material as THREE.Material).dispose();
-    this.bunTop.geometry.dispose();
-    (this.bunTop.material as THREE.Material).dispose();
+    this.tortilla.geometry.dispose();
+    (this.tortilla.material as THREE.Material).dispose();
+    this.carnePastor.geometry.dispose();
+    (this.carnePastor.material as THREE.Material).dispose();
     this.indicator.geometry.dispose();
     (this.indicator.material as THREE.Material).dispose();
     
