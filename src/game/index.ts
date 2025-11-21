@@ -15,7 +15,7 @@
 
 import type { Engine } from '../engine/Engine';
 import type { Game } from '../engine/Types';
-import { PlatformerGame } from './platformer/PlatformerGame';
+import { PikachuBoatGame } from './pikachu-boat/PikachuBoatGame';
 
 /**
  * Main game creation function.
@@ -28,8 +28,8 @@ export function createGame(engine: Engine): Game {
   // You can switch between different games here
   // For example, based on query params or config:
   // const params = new URLSearchParams(window.location.search);
-  // const mode = params.get('mode') || 'platformer';
+  // const mode = params.get('mode') || 'pikachu-boat';
 
-  // For now, we just create the platformer game
-  return new PlatformerGame(engine);
+  // Pikachu en un barco descubriendo nuevas tierras
+  return new PikachuBoatGame(engine);
 }
