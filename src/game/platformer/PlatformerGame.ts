@@ -12,6 +12,8 @@ import { Player } from './Player';
 import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
 import { Customer } from './Customer';
+import { Railway } from './Railway';
+import { Building, BuildingType } from './Building';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
@@ -21,6 +23,8 @@ export class PlatformerGame implements Game {
   private customers: Customer[] = [];
   private currentCustomer: Customer | null = null;
   private score: number = 0;
+  private buildings: Building[] = [];
+  private railway: Railway | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -31,7 +35,10 @@ export class PlatformerGame implements Game {
     // Create ground
     this.createGround();
 
-    // Create platforms
+    // Create town with buildings and railway
+    this.createTown();
+
+    // Create platforms (for gameplay)
     this.createPlatforms();
 
     // Create player
@@ -72,29 +79,67 @@ export class PlatformerGame implements Game {
     );
   }
 
+  private createTown(): void {
+    // Create railway that runs through the town
+    const railwayStart = new THREE.Vector3(-30, 0.25, 0);
+    const railwayEnd = new THREE.Vector3(30, 0.25, 0);
+    this.railway = new Railway(this.engine, railwayStart, railwayEnd);
+
+    // Create buildings around the town
+    const buildingConfigs = [
+      // Left side of railway
+      { x: -20, y: 0, z: -8, type: BuildingType.HOUSE },
+      { x: -15, y: 0, z: -10, type: BuildingType.HOUSE },
+      { x: -10, y: 0, z: -8, type: BuildingType.SHOP },
+      { x: -5, y: 0, z: -10, type: BuildingType.HOUSE },
+      { x: 0, y: 0, z: -12, type: BuildingType.TOWN_HALL },
+      { x: 5, y: 0, z: -10, type: BuildingType.SHOP },
+      { x: 10, y: 0, z: -8, type: BuildingType.HOUSE },
+      { x: 15, y: 0, z: -10, type: BuildingType.HOUSE },
+      { x: 20, y: 0, z: -8, type: BuildingType.SHOP },
+      
+      // Right side of railway
+      { x: -20, y: 0, z: 8, type: BuildingType.HOUSE },
+      { x: -15, y: 0, z: 10, type: BuildingType.SHOP },
+      { x: -10, y: 0, z: 8, type: BuildingType.HOUSE },
+      { x: -5, y: 0, z: 10, type: BuildingType.HOUSE },
+      { x: 0, y: 0, z: 8, type: BuildingType.SHOP },
+      { x: 5, y: 0, z: 10, type: BuildingType.HOUSE },
+      { x: 10, y: 0, z: 8, type: BuildingType.SHOP },
+      { x: 15, y: 0, z: 10, type: BuildingType.HOUSE },
+      { x: 20, y: 0, z: 8, type: BuildingType.HOUSE },
+      
+      // Railway station near the center
+      { x: -2, y: 0, z: 0, type: BuildingType.STATION },
+    ];
+
+    for (const config of buildingConfigs) {
+      const building = new Building(this.engine, {
+        position: new THREE.Vector3(config.x, config.y, config.z),
+        type: config.type,
+      });
+      this.buildings.push(building);
+      // Add building's platform to platforms array for collision
+      this.platforms.push(building.getPlatform());
+    }
+
+    console.log('[PlatformerGame] Town created with', this.buildings.length, 'buildings and railway');
+  }
+
   private createPlatforms(): void {
+    // Create some additional platforms for gameplay (on top of buildings or separate)
     const platformConfigs = [
-      { x: 5, y: 1, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: 10, y: 2, z: 5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 0, y: 1.5, z: -8, w: 6, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -8, y: 2.5, z: -5, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -5, y: 1, z: 8, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: 8, y: 3, z: -8, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 15, y: 1.5, z: -10, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: -15, y: 2, z: 10, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -12, y: 3, z: -12, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: 18, y: 2.5, z: 8, w: 5, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 20, y: 1, z: 15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -18, y: 1.5, z: -8, w: 5, h: 0.5, d: 5, color: 0xa0522d },
-      { x: 12, y: 4, z: -15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -10, y: 1, z: 15, w: 6, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 25, y: 3, z: 0, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -20, y: 2.5, z: 5, w: 5, h: 0.5, d: 5, color: 0xa0522d },
-      { x: 8, y: 2, z: 20, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
-      { x: -8, y: 3.5, z: -18, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: 0, y: 2, z: 22, w: 5, h: 0.5, d: 5, color: 0x8b4513 },
-      { x: 15, y: 1, z: -20, w: 4, h: 0.5, d: 4, color: 0xa0522d },
-      { x: -25, y: 1.5, z: -2, w: 5, h: 0.5, d: 4, color: 0x8b4513 },
+      // Platforms on top of some buildings for gameplay
+      { x: -10, y: 4, z: -8, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
+      { x: 5, y: 4, z: -10, w: 4, h: 0.5, d: 4, color: 0xa0522d },
+      { x: -5, y: 4, z: 10, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
+      { x: 10, y: 4, z: 8, w: 4, h: 0.5, d: 4, color: 0xa0522d },
+      
+      // Some floating platforms for variety
+      { x: -25, y: 3, z: -5, w: 3, h: 0.5, d: 3, color: 0x8b4513 },
+      { x: 25, y: 3, z: 5, w: 3, h: 0.5, d: 3, color: 0xa0522d },
+      { x: -18, y: 2, z: 15, w: 4, h: 0.5, d: 4, color: 0x8b4513 },
+      { x: 18, y: 2, z: -15, w: 4, h: 0.5, d: 4, color: 0xa0522d },
     ];
 
     for (const config of platformConfigs) {
@@ -187,6 +232,11 @@ export class PlatformerGame implements Game {
   }
 
   update(deltaTime: number): void {
+    // Update railway (train movement)
+    if (this.railway) {
+      this.railway.update(deltaTime);
+    }
+
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
 
@@ -532,6 +582,12 @@ export class PlatformerGame implements Game {
     this.hideOrderUI();
     this.cleanupIngredientPreviews();
     this.player.dispose();
+    if (this.railway) {
+      this.railway.dispose();
+    }
+    for (const building of this.buildings) {
+      building.dispose();
+    }
     for (const platform of this.platforms) {
       platform.dispose();
     }
