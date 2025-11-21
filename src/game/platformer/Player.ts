@@ -36,19 +36,79 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player mesh (capsule)
-    const playerGeometry = new THREE.CapsuleGeometry(0.5, 1, 8, 16);
-    const playerMaterial = new THREE.MeshStandardMaterial({ color: 0xff6b6b });
-    this.mesh = new THREE.Mesh(playerGeometry, playerMaterial);
+    // Create green dragon body (elongated capsule)
+    const bodyGeometry = new THREE.CapsuleGeometry(0.6, 1.2, 8, 16);
+    const dragonMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x4caf50, // Green
+      roughness: 0.6,
+      metalness: 0.2,
+    });
+    this.mesh = new THREE.Mesh(bodyGeometry, dragonMaterial);
     this.mesh.castShadow = true;
     engine.scene.add(this.mesh);
 
-    // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.3, 0.6, 8);
-    const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
+    // Create dragon head (sphere)
+    const headGeometry = new THREE.SphereGeometry(0.5, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x66bb6a, // Lighter green
+      roughness: 0.6,
+    });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+    head.position.y = 0.8;
+    head.position.z = 0.4;
+    this.mesh.add(head);
+
+    // Create dragon snout
+    const snoutGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
+    const snoutMaterial = new THREE.MeshStandardMaterial({ color: 0x66bb6a });
+    const snout = new THREE.Mesh(snoutGeometry, snoutMaterial);
+    snout.rotation.x = Math.PI;
+    snout.position.z = 0.6;
+    snout.position.y = 0.8;
+    head.add(snout);
+
+    // Create dragon wings (two triangles)
+    const wingGeometry = new THREE.ConeGeometry(0.3, 0.8, 3);
+    const wingMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x388e3c, // Darker green
+      side: THREE.DoubleSide,
+    });
+    
+    // Left wing
+    const leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+    leftWing.rotation.z = Math.PI / 4;
+    leftWing.rotation.y = -Math.PI / 2;
+    leftWing.position.x = -0.5;
+    leftWing.position.y = 0.3;
+    this.mesh.add(leftWing);
+
+    // Right wing
+    const rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+    rightWing.rotation.z = -Math.PI / 4;
+    rightWing.rotation.y = Math.PI / 2;
+    rightWing.position.x = 0.5;
+    rightWing.position.y = 0.3;
+    this.mesh.add(rightWing);
+
+    // Create dragon tail
+    const tailGeometry = new THREE.ConeGeometry(0.2, 0.6, 8);
+    const tailMaterial = new THREE.MeshStandardMaterial({ color: 0x4caf50 });
+    const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+    tail.rotation.x = Math.PI / 6;
+    tail.position.z = -0.8;
+    tail.position.y = -0.2;
+    this.mesh.add(tail);
+
+    // Create direction indicator (small green gem)
+    const indicatorGeometry = new THREE.OctahedronGeometry(0.2, 0);
+    const indicatorMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x81c784, // Light green
+      emissive: 0x4caf50,
+      emissiveIntensity: 0.5,
+    });
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
-    this.indicator.rotation.x = Math.PI / 2;
     this.indicator.position.z = 0.8;
+    this.indicator.position.y = 0.8;
     this.mesh.add(this.indicator);
 
     console.log('[Player] Created');
@@ -213,11 +273,21 @@ export class Player {
   }
 
   dispose(): void {
+    // Dispose all child meshes
+    const disposeMesh = (mesh: THREE.Mesh) => {
+      mesh.geometry.dispose();
+      if (mesh.material instanceof THREE.Material) {
+        mesh.material.dispose();
+      }
+      mesh.children.forEach((child) => {
+        if (child instanceof THREE.Mesh) {
+          disposeMesh(child);
+        }
+      });
+    };
+
+    disposeMesh(this.mesh);
     this.engine.scene.remove(this.mesh);
-    this.mesh.geometry.dispose();
-    (this.mesh.material as THREE.Material).dispose();
-    this.indicator.geometry.dispose();
-    (this.indicator.material as THREE.Material).dispose();
     console.log('[Player] Disposed');
   }
 }
