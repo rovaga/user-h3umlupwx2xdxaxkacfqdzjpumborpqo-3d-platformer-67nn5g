@@ -186,6 +186,21 @@ export class Engine {
       this.scene.background = new THREE.Color(0x87ceeb);
     }
 
+    // Validate camera before rendering
+    if (!isFinite(this.camera.position.x) || !isFinite(this.camera.position.y) || !isFinite(this.camera.position.z)) {
+      console.warn('[Engine] Invalid camera position detected, resetting camera');
+      this.camera.position.set(0, 4, 8);
+      this.camera.lookAt(0, 0, 0);
+    }
+    
+    // Validate camera rotation
+    if (!isFinite(this.camera.rotation.x) || !isFinite(this.camera.rotation.y) || !isFinite(this.camera.rotation.z)) {
+      console.warn('[Engine] Invalid camera rotation detected, resetting camera');
+      this.camera.rotation.set(0, 0, 0);
+      this.camera.position.set(0, 4, 8);
+      this.camera.lookAt(0, 0, 0);
+    }
+
     // Render
     try {
       this.renderer.render(this.scene, this.camera);

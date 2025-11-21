@@ -86,6 +86,12 @@ export class Player {
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
+    // Validate deltaTime to prevent invalid calculations
+    if (!isFinite(deltaTime) || deltaTime <= 0 || deltaTime > 1) {
+      // If deltaTime is invalid, use a safe default (60 FPS)
+      deltaTime = 1 / 60;
+    }
+    
     this.handleInput(deltaTime);
     this.applyPhysics(deltaTime);
     this.checkCollisions(platforms);
@@ -146,32 +152,62 @@ export class Player {
       this.onGround = false;
     }
 
-    // Camera control (mouse or touch)
+    // Camera control (mouse or touch) with validation
     if (isMobile) {
       // Mobile touch camera (frame-rate independent)
       const touchDelta = mobileInput.getCameraDelta();
-      this.cameraRotationY -= touchDelta.x * 0.005 * deltaTime * 60; // Scale to maintain same sensitivity at 60 FPS
-      this.cameraRotationX -= touchDelta.y * 0.005 * deltaTime * 60;
-      this.cameraRotationX = Math.max(
-        -Math.PI / 3,
-        Math.min(Math.PI / 3, this.cameraRotationX)
-      );
+      if (isFinite(touchDelta.x) && isFinite(touchDelta.y)) {
+        this.cameraRotationY -= touchDelta.x * 0.005 * deltaTime * 60; // Scale to maintain same sensitivity at 60 FPS
+        this.cameraRotationX -= touchDelta.y * 0.005 * deltaTime * 60;
+        this.cameraRotationX = Math.max(
+          -Math.PI / 3,
+          Math.min(Math.PI / 3, this.cameraRotationX)
+        );
+      }
     } else if (input.isPointerLocked()) {
       // Mouse camera (frame-rate independent)
       const mouseDelta = input.getMouseDelta();
-      this.cameraRotationY -= mouseDelta.x * 0.002 * deltaTime * 60; // Scale to maintain same sensitivity at 60 FPS
-      this.cameraRotationX -= mouseDelta.y * 0.002 * deltaTime * 60;
-      this.cameraRotationX = Math.max(
-        -Math.PI / 3,
-        Math.min(Math.PI / 3, this.cameraRotationX)
-      );
+      if (isFinite(mouseDelta.x) && isFinite(mouseDelta.y)) {
+        this.cameraRotationY -= mouseDelta.x * 0.002 * deltaTime * 60; // Scale to maintain same sensitivity at 60 FPS
+        this.cameraRotationX -= mouseDelta.y * 0.002 * deltaTime * 60;
+        this.cameraRotationX = Math.max(
+          -Math.PI / 3,
+          Math.min(Math.PI / 3, this.cameraRotationX)
+        );
+      }
+    }
+    
+    // Validate and clamp camera rotation values to prevent invalid states
+    if (!isFinite(this.cameraRotationY)) {
+      this.cameraRotationY = 0;
+    }
+    if (!isFinite(this.cameraRotationX)) {
+      this.cameraRotationX = 0.3;
+    }
+    // Keep rotation Y in reasonable range (wrap around, but clamp to prevent extreme values)
+    if (Math.abs(this.cameraRotationY) > Math.PI * 10) {
+      this.cameraRotationY = this.cameraRotationY % (Math.PI * 2);
     }
   }
 
   private applyPhysics(deltaTime: number): void {
+    // Validate deltaTime
+    if (!isFinite(deltaTime) || deltaTime <= 0 || deltaTime > 1) {
+      deltaTime = 1 / 60;
+    }
+    
     // Apply gravity (frame-rate independent)
     this.velocity.y += this.gravity * deltaTime * 60; // Scale to maintain same gravity at 60 FPS
     this.position.y += this.velocity.y * deltaTime * 60;
+
+    // Validate velocity and position after physics update
+    if (!isFinite(this.velocity.x)) this.velocity.x = 0;
+    if (!isFinite(this.velocity.y)) this.velocity.y = 0;
+    if (!isFinite(this.velocity.z)) this.velocity.z = 0;
+    
+    if (!isFinite(this.position.x)) this.position.x = 0;
+    if (!isFinite(this.position.y)) this.position.y = 2;
+    if (!isFinite(this.position.z)) this.position.z = 0;
 
     // Reset to spawn if fallen off the world
     if (this.position.y < -10) {
@@ -210,12 +246,27 @@ export class Player {
   }
 
   private updateMesh(): void {
-    this.mesh.position.copy(this.position);
-    this.mesh.rotation.y = this.rotation;
+    // Validate position and rotation before updating mesh
+    if (isFinite(this.position.x) && isFinite(this.position.y) && isFinite(this.position.z)) {
+      this.mesh.position.copy(this.position);
+    }
+    if (isFinite(this.rotation)) {
+      this.mesh.rotation.y = this.rotation;
+    }
   }
 
   private updateCamera(): void {
     const camera = this.engine.camera;
+    
+    // Validate camera rotation values before using them
+    if (!isFinite(this.cameraRotationY) || !isFinite(this.cameraRotationX)) {
+      this.cameraRotationY = 0;
+      this.cameraRotationX = 0.3;
+    }
+    
+    // Clamp camera rotation X to valid range
+    this.cameraRotationX = Math.max(-Math.PI / 2 + 0.1, Math.min(Math.PI / 2 - 0.1, this.cameraRotationX));
+    
     const cameraOffset = new THREE.Vector3();
 
     cameraOffset.x =
@@ -229,14 +280,38 @@ export class Player {
       Math.cos(this.cameraRotationX) *
       this.cameraDistance;
 
+    // Validate camera offset before applying
+    if (!isFinite(cameraOffset.x) || !isFinite(cameraOffset.y) || !isFinite(cameraOffset.z)) {
+      // Reset to default camera position if calculation failed
+      cameraOffset.set(0, this.cameraHeight, this.cameraDistance);
+      this.cameraRotationY = 0;
+      this.cameraRotationX = 0.3;
+    }
+
+    // Validate player position before using it
+    if (!isFinite(this.position.x) || !isFinite(this.position.y) || !isFinite(this.position.z)) {
+      this.position.set(0, 2, 0);
+    }
+
     camera.position.copy(this.position).add(cameraOffset);
+
+    // Validate camera position
+    if (!isFinite(camera.position.x) || !isFinite(camera.position.y) || !isFinite(camera.position.z)) {
+      camera.position.set(0, this.cameraHeight, this.cameraDistance);
+    }
 
     // Prevent camera from going below ground
     if (camera.position.y < 0.5) {
       camera.position.y = 0.5;
     }
 
-    camera.lookAt(this.position);
+    // Ensure camera always looks at player
+    const lookAtTarget = this.position.clone();
+    if (isFinite(lookAtTarget.x) && isFinite(lookAtTarget.y) && isFinite(lookAtTarget.z)) {
+      camera.lookAt(lookAtTarget);
+    } else {
+      camera.lookAt(0, 0, 0);
+    }
   }
 
   addIngredient(ingredientMesh: THREE.Mesh, height: number, ingredientType: IngredientType): void {
