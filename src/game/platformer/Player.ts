@@ -11,9 +11,15 @@ import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
-  private bunBottom: THREE.Mesh;
-  private bunTop: THREE.Mesh;
+  private mesh: THREE.Group; // Changed to Group to hold kitten and ingredients
+  private body: THREE.Mesh;
+  private head: THREE.Mesh;
+  private leftEar: THREE.Mesh;
+  private rightEar: THREE.Mesh;
+  private tail: THREE.Mesh;
+  private leftEye: THREE.Mesh;
+  private rightEye: THREE.Mesh;
+  private nose: THREE.Mesh;
   private indicator: THREE.Mesh;
   private collectedIngredients: THREE.Mesh[] = [];
   private ingredientStackHeight: number = 0;
@@ -40,42 +46,96 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player group (hamburger)
+    // Create player group (kitten)
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574, // Golden brown bun color
-      roughness: 0.7 
+    // Create body (orange/tabby colored sphere)
+    const bodyGeometry = new THREE.SphereGeometry(0.4, 16, 16);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xff8c42, // Orange tabby color
+      roughness: 0.8 
     });
-    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
-    this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
-    this.mesh.add(this.bunBottom);
+    this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    this.body.position.y = 0;
+    this.body.castShadow = true;
+    this.mesh.add(this.body);
 
-    // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
-    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574,
-      roughness: 0.7 
+    // Create head (slightly smaller sphere)
+    const headGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xff8c42,
+      roughness: 0.8 
     });
-    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
-    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
-    this.mesh.add(this.bunTop);
+    this.head = new THREE.Mesh(headGeometry, headMaterial);
+    this.head.position.y = 0.5;
+    this.head.position.z = 0.3;
+    this.head.castShadow = true;
+    this.mesh.add(this.head);
 
-    // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
+    // Create left ear (triangle-like cone)
+    const earGeometry = new THREE.ConeGeometry(0.15, 0.2, 3);
+    const earMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xff8c42,
+      roughness: 0.8 
+    });
+    this.leftEar = new THREE.Mesh(earGeometry, earMaterial);
+    this.leftEar.position.set(-0.25, 0.7, 0.25);
+    this.leftEar.rotation.z = -0.3;
+    this.leftEar.rotation.x = -0.5;
+    this.leftEar.castShadow = true;
+    this.mesh.add(this.leftEar);
+
+    // Create right ear
+    this.rightEar = new THREE.Mesh(earGeometry, earMaterial.clone());
+    this.rightEar.position.set(0.25, 0.7, 0.25);
+    this.rightEar.rotation.z = 0.3;
+    this.rightEar.rotation.x = -0.5;
+    this.rightEar.castShadow = true;
+    this.mesh.add(this.rightEar);
+
+    // Create tail (curved cylinder)
+    const tailGeometry = new THREE.CylinderGeometry(0.08, 0.12, 0.8, 8);
+    const tailMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xff8c42,
+      roughness: 0.8 
+    });
+    this.tail = new THREE.Mesh(tailGeometry, tailMaterial);
+    this.tail.position.set(0, 0.2, -0.5);
+    this.tail.rotation.x = 0.3;
+    this.tail.castShadow = true;
+    this.mesh.add(this.tail);
+
+    // Create left eye (black sphere)
+    const eyeGeometry = new THREE.SphereGeometry(0.08, 8, 8);
+    const eyeMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    this.leftEye = new THREE.Mesh(eyeGeometry, eyeMaterial);
+    this.leftEye.position.set(-0.12, 0.55, 0.5);
+    this.mesh.add(this.leftEye);
+
+    // Create right eye
+    this.rightEye = new THREE.Mesh(eyeGeometry, eyeMaterial.clone());
+    this.rightEye.position.set(0.12, 0.55, 0.5);
+    this.mesh.add(this.rightEye);
+
+    // Create nose (pink triangle)
+    const noseGeometry = new THREE.ConeGeometry(0.05, 0.08, 3);
+    const noseMaterial = new THREE.MeshStandardMaterial({ color: 0xffb6c1 });
+    this.nose = new THREE.Mesh(noseGeometry, noseMaterial);
+    this.nose.position.set(0, 0.45, 0.55);
+    this.nose.rotation.z = Math.PI;
+    this.mesh.add(this.nose);
+
+    // Create direction indicator (yellow cone) - positioned on back
+    const indicatorGeometry = new THREE.ConeGeometry(0.15, 0.3, 8);
     const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
     this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
     this.indicator.rotation.x = Math.PI / 2;
-    this.indicator.position.z = 0.6;
-    this.indicator.position.y = 0.25;
+    this.indicator.position.z = -0.6;
+    this.indicator.position.y = 0.3;
     this.mesh.add(this.indicator);
 
-    console.log('[Player] Created as hamburger');
+    console.log('[Player] Created as kitten');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -178,8 +238,8 @@ export class Player {
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
-      const playerRadius = 0.5;
+      const playerBottom = this.position.y - 0.4; // Adjusted for kitten body height
+      const playerRadius = 0.4;
 
       // Check horizontal overlap
       if (
@@ -194,7 +254,7 @@ export class Player {
           playerBottom >= bounds.min.y &&
           this.velocity.y <= 0
         ) {
-          this.position.y = bounds.max.y + 0.3;
+          this.position.y = bounds.max.y + 0.4;
           this.velocity.y = 0;
           this.onGround = true;
         }
@@ -233,15 +293,14 @@ export class Player {
   }
 
   addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
-    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
-    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
+    // Position ingredient on top of current stack (stack starts at top of kitten head, y=0.85)
+    ingredientMesh.position.y = this.ingredientStackHeight + height / 2 + 0.85;
     this.mesh.add(ingredientMesh);
     this.collectedIngredients.push(ingredientMesh);
     this.ingredientStackHeight += height;
     
-    // Move top bun and indicator higher to sit on top of ingredients
-    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
-    this.indicator.position.y = this.ingredientStackHeight + 0.15;
+    // Move indicator higher to sit on top of ingredients
+    this.indicator.position.y = this.ingredientStackHeight + 0.85 + 0.15;
     
     console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
   }
@@ -251,15 +310,27 @@ export class Player {
   }
 
   getRadius(): number {
-    return 0.5;
+    return 0.4;
   }
 
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.bunBottom.geometry.dispose();
-    (this.bunBottom.material as THREE.Material).dispose();
-    this.bunTop.geometry.dispose();
-    (this.bunTop.material as THREE.Material).dispose();
+    this.body.geometry.dispose();
+    (this.body.material as THREE.Material).dispose();
+    this.head.geometry.dispose();
+    (this.head.material as THREE.Material).dispose();
+    this.leftEar.geometry.dispose();
+    (this.leftEar.material as THREE.Material).dispose();
+    this.rightEar.geometry.dispose();
+    (this.rightEar.material as THREE.Material).dispose();
+    this.tail.geometry.dispose();
+    (this.tail.material as THREE.Material).dispose();
+    this.leftEye.geometry.dispose();
+    (this.leftEye.material as THREE.Material).dispose();
+    this.rightEye.geometry.dispose();
+    (this.rightEye.material as THREE.Material).dispose();
+    this.nose.geometry.dispose();
+    (this.nose.material as THREE.Material).dispose();
     this.indicator.geometry.dispose();
     (this.indicator.material as THREE.Material).dispose();
     
