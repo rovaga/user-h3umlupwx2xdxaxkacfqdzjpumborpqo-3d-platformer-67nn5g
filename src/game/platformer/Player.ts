@@ -8,6 +8,8 @@
 import * as THREE from 'three';
 import type { Engine } from '../../engine/Engine';
 import type { Platform } from './Platform';
+import type { Weapon, WeaponType } from './Weapon';
+import type { Projectile } from './Projectile';
 
 export class Player {
   private engine: Engine;
@@ -17,6 +19,11 @@ export class Player {
   private indicator: THREE.Mesh;
   private collectedIngredients: THREE.Mesh[] = [];
   private ingredientStackHeight: number = 0;
+  private currentWeapon: Weapon | null = null;
+  private weaponMesh: THREE.Group | null = null;
+  private fireCooldown: number = 0;
+  private lastMouseButtonState: boolean = false;
+  private latestProjectile: Projectile | null = null;
 
   // Player state
   private position: THREE.Vector3;
@@ -84,6 +91,17 @@ export class Player {
     this.checkCollisions(platforms);
     this.updateMesh();
     this.updateCamera();
+    
+    // Update fire cooldown
+    if (this.fireCooldown > 0) {
+      this.fireCooldown -= deltaTime;
+    }
+  }
+
+  getLatestProjectile(): Projectile | null {
+    const projectile = this.latestProjectile;
+    this.latestProjectile = null; // Consume the projectile
+    return projectile;
   }
 
   private handleInput(): void {
@@ -159,6 +177,15 @@ export class Player {
         Math.min(Math.PI / 3, this.cameraRotationX)
       );
     }
+
+    // Shooting (left mouse button)
+    if (!isMobile && this.currentWeapon) {
+      const mouseButtonPressed = input.isKeyPressed('Mouse0');
+      if (mouseButtonPressed && !this.lastMouseButtonState && this.fireCooldown <= 0) {
+        this.latestProjectile = this.shoot();
+      }
+      this.lastMouseButtonState = mouseButtonPressed;
+    }
   }
 
   private applyPhysics(): void {
@@ -205,6 +232,22 @@ export class Player {
   private updateMesh(): void {
     this.mesh.position.copy(this.position);
     this.mesh.rotation.y = this.rotation;
+    
+    // Update weapon position and rotation
+    if (this.weaponMesh && this.currentWeapon) {
+      // Position weapon in front of player
+      const weaponOffset = new THREE.Vector3(0, 0.5, 0.8);
+      weaponOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rotation);
+      this.weaponMesh.position.copy(weaponOffset);
+      
+      // Rotate weapon to face forward
+      this.weaponMesh.rotation.y = this.rotation;
+      
+      // For ranged weapons, tilt slightly based on camera angle
+      if (!this.currentWeapon.isMelee()) {
+        this.weaponMesh.rotation.x = -this.cameraRotationX * 0.5;
+      }
+    }
   }
 
   private updateCamera(): void {
@@ -246,6 +289,71 @@ export class Player {
     console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
   }
 
+  addWeapon(weapon: Weapon): void {
+    // Remove old weapon if exists
+    if (this.weaponMesh) {
+      this.mesh.remove(this.weaponMesh);
+      this.weaponMesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (child.material instanceof THREE.Material) {
+            child.material.dispose();
+          }
+        }
+      });
+    }
+
+    this.currentWeapon = weapon;
+    this.weaponMesh = weapon.createMeshForPlayer();
+    this.mesh.add(this.weaponMesh);
+    
+    console.log(`[Player] Equipped weapon: ${weapon.getType()}`);
+  }
+
+  getCurrentWeapon(): Weapon | null {
+    return this.currentWeapon;
+  }
+
+  shoot(): Projectile | null {
+    if (!this.currentWeapon || this.fireCooldown > 0) {
+      return null;
+    }
+
+    // Set fire cooldown based on weapon fire rate
+    this.fireCooldown = 1.0 / this.currentWeapon.getFireRate();
+
+    // Melee weapons don't shoot projectiles
+    if (this.currentWeapon.isMelee()) {
+      console.log(`[Player] Swung ${this.currentWeapon.getType()}`);
+      return null;
+    }
+
+    // Calculate shooting direction based on camera rotation
+    const direction = new THREE.Vector3();
+    direction.x = -Math.sin(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+    direction.y = Math.sin(this.cameraRotationX);
+    direction.z = -Math.cos(this.cameraRotationY) * Math.cos(this.cameraRotationX);
+    direction.normalize();
+
+    // Start position slightly in front of player
+    const startPosition = this.position.clone();
+    startPosition.y += 0.5;
+    startPosition.add(direction.clone().multiplyScalar(0.5));
+
+    // Create projectile
+    const projectile = new Projectile(
+      this.engine,
+      startPosition,
+      direction,
+      this.currentWeapon.getDamage(),
+      this.currentWeapon.getRange(),
+      15.0 // bullet speed
+    );
+
+    console.log(`[Player] Shot ${this.currentWeapon.getType()}`);
+    return projectile;
+  }
+
   getPosition(): THREE.Vector3 {
     return this.position.clone();
   }
@@ -267,6 +375,18 @@ export class Player {
     for (const ingredient of this.collectedIngredients) {
       ingredient.geometry.dispose();
       (ingredient.material as THREE.Material).dispose();
+    }
+    
+    // Dispose weapon
+    if (this.weaponMesh) {
+      this.weaponMesh.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (child.material instanceof THREE.Material) {
+            child.material.dispose();
+          }
+        }
+      });
     }
     
     console.log('[Player] Disposed');

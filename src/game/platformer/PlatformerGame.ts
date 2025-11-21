@@ -11,12 +11,16 @@ import type { Game } from '../../engine/Types';
 import { Player } from './Player';
 import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
+import { Weapon, WeaponType } from './Weapon';
+import { Projectile } from './Projectile';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
+  private weapons: Weapon[] = [];
+  private projectiles: Projectile[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -35,6 +39,9 @@ export class PlatformerGame implements Game {
 
     // Create ingredients
     this.createIngredients();
+
+    // Create weapons
+    this.createWeapons();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -130,9 +137,35 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private createWeapons(): void {
+    // Define weapon spawn positions (on ground/platforms)
+    const weaponSpawns = [
+      { x: -5, y: 0.5, z: -5, type: WeaponType.SWORD },
+      { x: 12, y: 0.5, z: 12, type: WeaponType.FLINTLOCK },
+      { x: -15, y: 0.5, z: 15, type: WeaponType.M1_GARAND },
+      { x: 20, y: 0.5, z: -10, type: WeaponType.SWORD },
+      { x: -20, y: 0.5, z: -15, type: WeaponType.FLINTLOCK },
+      { x: 0, y: 0.5, z: 0, type: WeaponType.M1_GARAND },
+    ];
+
+    for (const spawn of weaponSpawns) {
+      const weapon = new Weapon(this.engine, {
+        type: spawn.type,
+        position: new THREE.Vector3(spawn.x, spawn.y, spawn.z),
+      });
+      this.weapons.push(weapon);
+    }
+  }
+
   update(deltaTime: number): void {
-    // Update player (handles input and movement)
+    // Update player (handles input and movement, may create projectiles)
     this.player.update(deltaTime, this.platforms);
+
+    // Check for shooting (after update creates projectiles)
+    const projectile = this.player.getLatestProjectile();
+    if (projectile) {
+      this.projectiles.push(projectile);
+    }
 
     // Update ingredients
     for (const ingredient of this.ingredients) {
@@ -150,6 +183,31 @@ export class PlatformerGame implements Game {
         }
       }
     }
+
+    // Update weapons
+    for (const weapon of this.weapons) {
+      if (!weapon.isCollected()) {
+        weapon.update(deltaTime);
+
+        // Check collision with player
+        const playerPos = this.player.getPosition();
+        const playerRadius = this.player.getRadius();
+        if (weapon.checkCollision(playerPos, playerRadius)) {
+          // Equip weapon
+          this.player.addWeapon(weapon);
+        }
+      }
+    }
+
+    // Update projectiles
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const projectile = this.projectiles[i];
+      const isActive = projectile.update(deltaTime);
+      if (!isActive) {
+        projectile.dispose();
+        this.projectiles.splice(i, 1);
+      }
+    }
   }
 
   onResize(width: number, height: number): void {
@@ -163,6 +221,12 @@ export class PlatformerGame implements Game {
     }
     for (const ingredient of this.ingredients) {
       ingredient.dispose();
+    }
+    for (const weapon of this.weapons) {
+      weapon.dispose();
+    }
+    for (const projectile of this.projectiles) {
+      projectile.dispose();
     }
     console.log('[PlatformerGame] Disposed');
   }

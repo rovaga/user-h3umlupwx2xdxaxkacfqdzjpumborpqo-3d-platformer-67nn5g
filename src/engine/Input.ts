@@ -18,6 +18,7 @@ export class Input {
     movementX: 0,
     movementY: 0,
   };
+  private mouseButtons: { [button: number]: boolean } = {};
   private canvas: HTMLCanvasElement;
 
   constructor(canvas: HTMLCanvasElement) {
@@ -51,13 +52,27 @@ export class Input {
         this.mouse.movementY = e.movementY;
       }
     });
+
+    // Mouse button events
+    document.addEventListener('mousedown', (e) => {
+      this.mouseButtons[e.button] = true;
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      this.mouseButtons[e.button] = false;
+    });
   }
 
   /**
    * Check if a specific key is currently pressed.
-   * @param code - KeyCode (e.g., 'KeyW', 'Space', 'ArrowUp')
+   * @param code - KeyCode (e.g., 'KeyW', 'Space', 'ArrowUp') or Mouse button ('Mouse0', 'Mouse1', 'Mouse2')
    */
   isKeyPressed(code: string): boolean {
+    // Handle mouse buttons (0 = left, 1 = middle, 2 = right)
+    if (code.startsWith('Mouse')) {
+      const buttonIndex = parseInt(code.substring(5));
+      return this.mouseButtons[buttonIndex] || false;
+    }
     return this.keys[code] || false;
   }
 
