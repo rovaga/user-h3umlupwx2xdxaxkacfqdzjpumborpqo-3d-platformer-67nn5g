@@ -54,20 +54,30 @@ export function createGame(engine: Engine): Game
     │   └── Types.ts
     └── game/                  # ✏️ AI playground (edit freely)
         ├── index.ts           # Game entry point
-        └── platformer/        # Example platformer game
-            ├── PlatformerGame.ts
-            ├── Player.ts
-            └── Platform.ts
+        └── voxel/             # Voxel game
+            ├── VoxelGame.ts
+            ├── VoxelWorld.ts
+            └── FirstPersonCamera.ts
 ```
 
 ## Current Game
 
-The project currently includes a 3D platformer demo:
-- Third-person camera controls
-- WASD movement
-- Space to jump
-- Mouse look (click to lock pointer)
-- Multiple platforms to explore
+The project currently includes a Minecraft-like voxel game:
+- **First-person camera controls** - Click to lock pointer and look around
+- **WASD** - Move forward/backward/left/right
+- **Space** - Jump
+- **Left Click** - Destroy blocks
+- **Right Click** - Place blocks
+- **Number Keys 1-9** - Select different block types:
+  - 1: Stone
+  - 2: Grass
+  - 3: Dirt
+  - 4: Wood
+  - 5: Leaves
+  - 6: Sand
+  - 7: Water
+  - 8: Glass
+  - 9: Brick
 
 ## How It Solves "AI as Game Dev" Problems
 
