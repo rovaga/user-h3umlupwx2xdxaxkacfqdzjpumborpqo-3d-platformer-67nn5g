@@ -211,13 +211,13 @@ export class Player {
         this.position.z - playerRadius < bounds.max.z;
 
       if (horizontalOverlap) {
-        // Check if landing on top of platform (most common case)
         const platformTop = bounds.max.y;
+        const platformBottom = bounds.min.y;
         const distanceToTop = playerBottom - platformTop;
         const expectedY = platformTop + 0.3;
         
+        // Check if landing on top of platform (most common case)
         // If player is close to platform top and falling or on it
-        // Only adjust position if player is actually intersecting or very close
         if (
           distanceToTop <= 0.1 && // Within 0.1 units above platform (tighter tolerance)
           distanceToTop >= -0.2 && // Not too far below (tighter tolerance)
@@ -231,11 +231,28 @@ export class Player {
           this.onGround = true;
           break; // Only stand on one platform at a time
         }
-        // Check side collisions (player inside platform horizontally but not on top)
+        // Check if player is hitting the bottom of platform - push down and stop upward velocity
+        else if (playerTop > platformBottom && playerTop < platformTop && playerBottom < platformBottom) {
+          // Player's top is hitting the bottom of the platform
+          this.position.y = platformBottom - 0.3;
+          if (this.velocity.y > 0) {
+            this.velocity.y = 0; // Stop upward velocity to prevent bouncing
+          }
+        }
+        // Check if player is completely underneath platform - push down
+        else if (playerTop < platformBottom) {
+          // Player is completely below the platform, push down
+          this.position.y = platformBottom - 0.3;
+          if (this.velocity.y > 0) {
+            this.velocity.y = 0; // Stop upward velocity
+          }
+        }
+        // Check side collisions (player inside platform horizontally but not on top or bottom)
         else if (
           playerTop > bounds.min.y &&
           playerBottom < bounds.max.y &&
-          playerBottom < platformTop - 0.1 // Not on top
+          playerBottom < platformTop - 0.1 && // Not on top
+          playerTop > platformBottom + 0.1 // Not on bottom
         ) {
           // Push player out horizontally
           const centerX = (bounds.min.x + bounds.max.x) / 2;
