@@ -33,6 +33,7 @@ export class VoxelGame implements Game {
 
     // Create first-person camera controller
     this.cameraController = new FirstPersonCamera(engine);
+    this.cameraController.setVoxelWorld(this.voxelWorld);
     this.cameraController.setPosition(new THREE.Vector3(0, 10, 0));
 
     // Generate initial terrain
