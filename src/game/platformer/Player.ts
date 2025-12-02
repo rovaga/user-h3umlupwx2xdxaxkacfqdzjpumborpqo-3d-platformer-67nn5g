@@ -100,7 +100,7 @@ export class Player {
       // Mobile joystick input
       const joystick = mobileInput.getJoystickVector();
       moveDirection.x = joystick.x;
-      moveDirection.z = joystick.y;
+      moveDirection.z = -joystick.y; // Negate Y to match keyboard convention (positive Z = forward)
     } else {
       // Keyboard input
       if (input.isKeyPressed('KeyW')) moveDirection.z += 1;

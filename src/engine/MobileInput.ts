@@ -351,7 +351,7 @@ export class MobileInput {
    * Get joystick movement vector (normalized -1 to 1).
    */
   getJoystickVector(): THREE.Vector2 {
-    return new THREE.Vector2(this.joystickCurrent.x, -this.joystickCurrent.y);
+    return new THREE.Vector2(this.joystickCurrent.x, this.joystickCurrent.y);
   }
 
   /**
