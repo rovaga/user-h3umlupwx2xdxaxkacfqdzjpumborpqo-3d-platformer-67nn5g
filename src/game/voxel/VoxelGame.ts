@@ -17,6 +17,8 @@ export class VoxelGame implements Game {
   private raycaster: THREE.Raycaster;
   private mouse: THREE.Vector2;
   private selectedBlockType: number = 1; // Default block type
+  private destroyPointerMesh: THREE.LineSegments | null = null; // Visual pointer for block destruction (red)
+  private placePointerMesh: THREE.LineSegments | null = null; // Visual pointer for block placement (green)
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -41,6 +43,9 @@ export class VoxelGame implements Game {
 
     // Setup mouse click handlers for block placement/destruction
     this.setupInputHandlers();
+
+    // Create visual pointer for block placement/destruction
+    this.createPointer();
 
     console.log('[VoxelGame] Initialized');
   }
@@ -101,7 +106,12 @@ export class VoxelGame implements Game {
     });
   }
 
-  private getBlockRaycast(): { hit: boolean; position?: THREE.Vector3; normal?: THREE.Vector3 } {
+  private getBlockRaycast(): { 
+    hit: boolean; 
+    position?: THREE.Vector3; 
+    normal?: THREE.Vector3;
+    blockPosition?: { x: number; y: number; z: number };
+  } {
     // Cast ray from camera forward
     const direction = new THREE.Vector3();
     this.engine.camera.getWorldDirection(direction);
@@ -125,7 +135,11 @@ export class VoxelGame implements Game {
         }
       }
       
-      return { hit: true, position, normal };
+      // Get the block position from the intersected mesh
+      const mesh = intersect.object as THREE.Mesh;
+      const blockPos = mesh.userData.blockPosition;
+      
+      return { hit: true, position, normal, blockPosition: blockPos };
     }
     
     return { hit: false };
@@ -134,21 +148,12 @@ export class VoxelGame implements Game {
   private destroyBlock(): void {
     const raycast = this.getBlockRaycast();
     
-    if (raycast.hit && raycast.position) {
-      // Get the block position from the intersected mesh
-      const blockMeshes = this.voxelWorld.getBlockMeshes();
-      const direction = new THREE.Vector3();
-      this.engine.camera.getWorldDirection(direction);
-      this.raycaster.set(this.engine.camera.position, direction);
-      const intersects = this.raycaster.intersectObjects(blockMeshes, false);
-      
-      if (intersects.length > 0) {
-        const mesh = intersects[0].object as THREE.Mesh;
-        const blockPos = mesh.userData.blockPosition;
-        if (blockPos) {
-          this.voxelWorld.removeBlock(blockPos.x, blockPos.y, blockPos.z);
-        }
-      }
+    if (raycast.hit && raycast.blockPosition) {
+      this.voxelWorld.removeBlock(
+        raycast.blockPosition.x, 
+        raycast.blockPosition.y, 
+        raycast.blockPosition.z
+      );
     }
   }
 
@@ -190,9 +195,92 @@ export class VoxelGame implements Game {
     }
   }
 
+  private createPointer(): void {
+    // Create wireframe box outlines to show where blocks will be placed/destroyed
+    const geometry = new THREE.BoxGeometry(1.01, 1.01, 1.01); // Slightly larger than block to be visible
+    const edges = new THREE.EdgesGeometry(geometry);
+    
+    // Red pointer for block destruction
+    const destroyMaterial = new THREE.LineBasicMaterial({ 
+      color: 0xff0000,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.8
+    });
+    this.destroyPointerMesh = new THREE.LineSegments(edges.clone(), destroyMaterial);
+    this.destroyPointerMesh.visible = false;
+    this.engine.scene.add(this.destroyPointerMesh);
+    
+    // Green pointer for block placement
+    const placeMaterial = new THREE.LineBasicMaterial({ 
+      color: 0x00ff00,
+      linewidth: 2,
+      transparent: true,
+      opacity: 0.8
+    });
+    this.placePointerMesh = new THREE.LineSegments(edges.clone(), placeMaterial);
+    this.placePointerMesh.visible = false;
+    this.engine.scene.add(this.placePointerMesh);
+  }
+
+  private updatePointer(): void {
+    if (!this.destroyPointerMesh || !this.placePointerMesh) return;
+
+    const raycast = this.getBlockRaycast();
+    const isPointerLocked = this.engine.input.isPointerLocked();
+    const isMobile = this.engine.mobileInput.isMobileControlsActive();
+
+    // Only show pointers when pointer is locked or mobile controls are active
+    if (!raycast.hit || (!isPointerLocked && !isMobile)) {
+      this.destroyPointerMesh.visible = false;
+      this.placePointerMesh.visible = false;
+      return;
+    }
+
+    // Show red pointer on the block that will be destroyed
+    if (raycast.blockPosition) {
+      const blockPos = raycast.blockPosition;
+      this.destroyPointerMesh.position.set(blockPos.x + 0.5, blockPos.y + 0.5, blockPos.z + 0.5);
+      this.destroyPointerMesh.visible = true;
+    } else {
+      this.destroyPointerMesh.visible = false;
+    }
+
+    // Show green pointer where block will be placed
+    if (raycast.position && raycast.normal) {
+      const blockPos = raycast.position.clone().add(raycast.normal.multiplyScalar(0.5));
+      const x = Math.round(blockPos.x - 0.5);
+      const y = Math.round(blockPos.y - 0.5);
+      const z = Math.round(blockPos.z - 0.5);
+      
+      // Check if placement is valid (not inside player, not already occupied)
+      const playerPos = this.cameraController.getPosition();
+      const playerBlockX = Math.floor(playerPos.x);
+      const playerBlockY = Math.floor(playerPos.y);
+      const playerBlockZ = Math.floor(playerPos.z);
+      
+      const isValidPlacement = 
+        !this.voxelWorld.getBlock(x, y, z) &&
+        !(x === playerBlockX && y === playerBlockY && z === playerBlockZ) &&
+        !(Math.abs(x - playerPos.x) < 0.6 && Math.abs(y - playerPos.y) < 1.6 && Math.abs(z - playerPos.z) < 0.6);
+      
+      if (isValidPlacement) {
+        this.placePointerMesh.position.set(x + 0.5, y + 0.5, z + 0.5);
+        this.placePointerMesh.visible = true;
+      } else {
+        this.placePointerMesh.visible = false;
+      }
+    } else {
+      this.placePointerMesh.visible = false;
+    }
+  }
+
   update(deltaTime: number): void {
     // Update camera controller (handles movement and rotation)
     this.cameraController.update(deltaTime);
+
+    // Update pointer position
+    this.updatePointer();
 
     // Handle mobile create/destroy button presses
     if (this.engine.mobileInput.isMobileControlsActive()) {
@@ -210,6 +298,21 @@ export class VoxelGame implements Game {
   }
 
   dispose(): void {
+    // Clean up pointers
+    if (this.destroyPointerMesh) {
+      this.engine.scene.remove(this.destroyPointerMesh);
+      this.destroyPointerMesh.geometry.dispose();
+      (this.destroyPointerMesh.material as THREE.Material).dispose();
+      this.destroyPointerMesh = null;
+    }
+    
+    if (this.placePointerMesh) {
+      this.engine.scene.remove(this.placePointerMesh);
+      this.placePointerMesh.geometry.dispose();
+      (this.placePointerMesh.material as THREE.Material).dispose();
+      this.placePointerMesh = null;
+    }
+    
     this.voxelWorld.dispose();
     console.log('[VoxelGame] Disposed');
   }
