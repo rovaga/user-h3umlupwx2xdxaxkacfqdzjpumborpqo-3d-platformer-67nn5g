@@ -219,14 +219,24 @@ export class Player {
         // Check if landing on top of platform (most common case)
         // If player is close to platform top and falling or on it
         if (
-          distanceToTop <= 0.1 && // Within 0.1 units above platform (tighter tolerance)
-          distanceToTop >= -0.2 && // Not too far below (tighter tolerance)
-          this.velocity.y <= 0.1 // Falling or stationary (small tolerance for floating)
+          distanceToTop <= 0.05 && // Within 0.05 units above platform
+          distanceToTop >= -0.15 && // Not too far below
+          this.velocity.y <= 0.1 // Falling or stationary
         ) {
-          // Only snap if not already at the correct position (prevents bouncing)
-          if (Math.abs(this.position.y - expectedY) > 0.01) {
+          // Calculate how far off we are from the expected position
+          const positionError = this.position.y - expectedY;
+          
+          // Only adjust position if we're significantly off (prevents micro-bouncing)
+          // Only snap upward if player is intersecting or below platform top
+          if (distanceToTop < 0 || positionError < -0.005) {
+            // Player is intersecting or below platform, snap to correct position
             this.position.y = expectedY;
+          } else if (positionError > 0.01) {
+            // Player is too high above platform, but don't snap down (let gravity handle it)
+            // This prevents bouncing when already correctly positioned
           }
+          
+          // Always zero velocity and set onGround when on platform
           this.velocity.y = 0;
           this.onGround = true;
           break; // Only stand on one platform at a time
