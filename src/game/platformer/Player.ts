@@ -23,6 +23,7 @@ export class Player {
   private velocity: THREE.Vector3;
   private rotation: number = 0;
   private onGround: boolean = false;
+  private wasSpacePressed: boolean = false;
 
   // Player settings
   private readonly speed = 0.1;
@@ -130,9 +131,17 @@ export class Player {
     }
 
     // Jump (keyboard or mobile button)
-    const shouldJump = isMobile
-      ? mobileInput.isJumpPressed()
-      : input.isKeyPressed('Space');
+    let shouldJump = false;
+    if (isMobile) {
+      shouldJump = mobileInput.consumeJump();
+    } else {
+      // For keyboard, detect key press (transition from not pressed to pressed)
+      const isSpacePressed = input.isKeyPressed('Space');
+      if (isSpacePressed && !this.wasSpacePressed) {
+        shouldJump = true;
+      }
+      this.wasSpacePressed = isSpacePressed;
+    }
 
     if (shouldJump && this.onGround) {
       this.velocity.y = this.jumpForce;
