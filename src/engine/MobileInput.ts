@@ -153,12 +153,29 @@ export class MobileInput {
 
     // Jump button events
     if (this.jumpButtonElement) {
+      // Touch events for mobile
       this.jumpButtonElement.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
         this.jumpPressed = true;
       });
       this.jumpButtonElement.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.jumpPressed = false;
+      });
+      // Mouse events for desktop testing
+      this.jumpButtonElement.addEventListener('mousedown', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.jumpPressed = true;
+      });
+      this.jumpButtonElement.addEventListener('mouseup', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.jumpPressed = false;
+      });
+      this.jumpButtonElement.addEventListener('mouseleave', (e) => {
         e.preventDefault();
         e.stopPropagation();
         this.jumpPressed = false;

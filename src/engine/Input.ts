@@ -29,10 +29,18 @@ export class Input {
     // Keyboard events
     window.addEventListener('keydown', (e) => {
       this.keys[e.code] = true;
+      // Prevent default for spacebar to avoid page scrolling
+      if (e.code === 'Space') {
+        e.preventDefault();
+      }
     });
 
     window.addEventListener('keyup', (e) => {
       this.keys[e.code] = false;
+      // Prevent default for spacebar to avoid page scrolling
+      if (e.code === 'Space') {
+        e.preventDefault();
+      }
     });
 
     // Pointer lock events
