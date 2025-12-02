@@ -25,10 +25,10 @@ export class Player {
   private onGround: boolean = false;
   private wasSpacePressed: boolean = false;
 
-  // Player settings
-  private readonly speed = 0.1;
-  private readonly jumpForce = 0.4;
-  private readonly gravity = -0.015;
+  // Player settings (per second)
+  private readonly speed = 6.0; // units per second
+  private readonly jumpForce = 8.0; // units per second
+  private readonly gravity = -20.0; // units per second squared
 
   // Camera settings
   private cameraDistance = 8;
@@ -40,6 +40,7 @@ export class Player {
     this.engine = engine;
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
+    this.onGround = false; // Will be set by collision detection
 
     // Create player group (hamburger)
     this.mesh = new THREE.Group();
@@ -80,14 +81,14 @@ export class Player {
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
-    this.handleInput();
-    this.applyPhysics();
+    this.handleInput(deltaTime);
+    this.applyPhysics(deltaTime);
     this.checkCollisions(platforms);
     this.updateMesh();
     this.updateCamera();
   }
 
-  private handleInput(): void {
+  private handleInput(deltaTime: number): void {
     const input = this.engine.input;
     const mobileInput = this.engine.mobileInput;
     const isMobile = mobileInput.isMobileControlsActive();
@@ -108,7 +109,7 @@ export class Player {
       if (input.isKeyPressed('KeyD')) moveDirection.x += 1;
     }
 
-    // Apply movement
+    // Apply movement (will be scaled by deltaTime in update method)
     if (moveDirection.length() > 0) {
       moveDirection.normalize();
 
@@ -122,9 +123,10 @@ export class Player {
       worldMoveDirection.addScaledVector(right, moveDirection.x);
       worldMoveDirection.normalize();
 
-      // Move player
-      this.position.x += worldMoveDirection.x * this.speed;
-      this.position.z += worldMoveDirection.z * this.speed;
+      // Move player (scaled by deltaTime for frame-rate independence)
+      const clampedDeltaTime = Math.min(deltaTime, 0.1);
+      this.position.x += worldMoveDirection.x * this.speed * clampedDeltaTime;
+      this.position.z += worldMoveDirection.z * this.speed * clampedDeltaTime;
 
       // Rotate player to face movement direction
       this.rotation = Math.atan2(worldMoveDirection.x, worldMoveDirection.z);
@@ -170,10 +172,20 @@ export class Player {
     }
   }
 
-  private applyPhysics(): void {
-    // Apply gravity
-    this.velocity.y += this.gravity;
-    this.position.y += this.velocity.y;
+  private applyPhysics(deltaTime: number): void {
+    // Clamp deltaTime to prevent large jumps (e.g., when tab is inactive)
+    const clampedDeltaTime = Math.min(deltaTime, 0.1);
+    
+    // Apply gravity (scaled by deltaTime for frame-rate independence)
+    this.velocity.y += this.gravity * clampedDeltaTime;
+    
+    // Limit maximum fall speed to prevent tunneling through platforms
+    const maxFallSpeed = 30.0;
+    if (this.velocity.y < -maxFallSpeed) {
+      this.velocity.y = -maxFallSpeed;
+    }
+    
+    this.position.y += this.velocity.y * clampedDeltaTime;
 
     // Reset to spawn if fallen off the world
     if (this.position.y < -10) {
@@ -188,24 +200,59 @@ export class Player {
     for (const platform of platforms) {
       const bounds = platform.getBounds();
       const playerBottom = this.position.y - 0.3; // Adjusted for bun height
+      const playerTop = this.position.y + 0.3;
       const playerRadius = 0.5;
 
       // Check horizontal overlap
-      if (
+      const horizontalOverlap =
         this.position.x + playerRadius > bounds.min.x &&
         this.position.x - playerRadius < bounds.max.x &&
         this.position.z + playerRadius > bounds.min.z &&
-        this.position.z - playerRadius < bounds.max.z
-      ) {
-        // Check vertical collision (landing on platform)
+        this.position.z - playerRadius < bounds.max.z;
+
+      if (horizontalOverlap) {
+        // Check if landing on top of platform (most common case)
+        const platformTop = bounds.max.y;
+        const distanceToTop = playerBottom - platformTop;
+        
+        // If player is close to platform top and falling or on it
         if (
-          playerBottom <= bounds.max.y &&
-          playerBottom >= bounds.min.y &&
-          this.velocity.y <= 0
+          distanceToTop <= 0.2 && // Within 0.2 units above platform
+          distanceToTop >= -0.5 && // Not too far below
+          this.velocity.y <= 0.1 // Falling or stationary (small tolerance for floating)
         ) {
-          this.position.y = bounds.max.y + 0.3;
+          // Snap player to platform top
+          this.position.y = platformTop + 0.3;
           this.velocity.y = 0;
           this.onGround = true;
+        }
+        // Check side collisions (player inside platform horizontally but not on top)
+        else if (
+          playerTop > bounds.min.y &&
+          playerBottom < bounds.max.y &&
+          playerBottom < platformTop - 0.1 // Not on top
+        ) {
+          // Push player out horizontally
+          const centerX = (bounds.min.x + bounds.max.x) / 2;
+          const centerZ = (bounds.min.z + bounds.max.z) / 2;
+          const dx = this.position.x - centerX;
+          const dz = this.position.z - centerZ;
+          
+          if (Math.abs(dx) > Math.abs(dz)) {
+            // Push out on X axis
+            if (dx > 0) {
+              this.position.x = bounds.max.x + playerRadius;
+            } else {
+              this.position.x = bounds.min.x - playerRadius;
+            }
+          } else {
+            // Push out on Z axis
+            if (dz > 0) {
+              this.position.z = bounds.max.z + playerRadius;
+            } else {
+              this.position.z = bounds.min.z - playerRadius;
+            }
+          }
         }
       }
     }
