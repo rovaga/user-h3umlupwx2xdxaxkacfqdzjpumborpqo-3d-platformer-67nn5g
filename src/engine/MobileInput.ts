@@ -135,6 +135,7 @@ export class MobileInput {
       this.joystickElement.addEventListener('touchstart', this.handleJoystickStart.bind(this));
       this.joystickElement.addEventListener('touchmove', this.handleJoystickMove.bind(this));
       this.joystickElement.addEventListener('touchend', this.handleJoystickEnd.bind(this));
+      this.joystickElement.addEventListener('touchcancel', this.handleJoystickEnd.bind(this));
     }
 
     // Jump button events
@@ -165,6 +166,7 @@ export class MobileInput {
     document.addEventListener('touchstart', this.handleCameraTouchStart.bind(this));
     document.addEventListener('touchmove', this.handleCameraTouchMove.bind(this));
     document.addEventListener('touchend', this.handleCameraTouchEnd.bind(this));
+    document.addEventListener('touchcancel', this.handleCameraTouchEnd.bind(this));
 
     // Orientation change
     window.addEventListener('resize', this.updateControlsVisibility.bind(this));
@@ -257,22 +259,35 @@ export class MobileInput {
 
     // Start tracking potential tap/drag
     // We'll determine if it's a tap or drag based on movement
+    // Only start if we don't already have a map/camera touch active
     if (this.mapTapTouchId === null && this.cameraTouchId === null) {
-      const touch = e.touches[0];
-      this.mapTapTouchId = touch.identifier;
-      this.lastCameraTouch = {
-        x: touch.clientX,
-        y: touch.clientY,
-      };
+      // Find the first touch that's not the joystick touch
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        // Skip if this is the joystick touch
+        if (touch.identifier === this.joystickTouchId) {
+          continue;
+        }
+        // Use this touch for map/camera control
+        this.mapTapTouchId = touch.identifier;
+        this.lastCameraTouch = {
+          x: touch.clientX,
+          y: touch.clientY,
+        };
+        break;
+      }
     }
   }
 
   private handleCameraTouchMove(e: TouchEvent): void {
     // Check if map tap moved (if moved significantly, it's a drag, not a tap)
     if (this.mapTapTouchId !== null) {
+      // Check if the touch still exists
+      let touchFound = false;
       for (let i = 0; i < e.touches.length; i++) {
         const touch = e.touches[i];
         if (touch.identifier === this.mapTapTouchId) {
+          touchFound = true;
           const dx = touch.clientX - this.lastCameraTouch.x;
           const dy = touch.clientY - this.lastCameraTouch.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
@@ -291,13 +306,20 @@ export class MobileInput {
           break;
         }
       }
+      // If touch was lost (e.g., ended unexpectedly), clear it
+      if (!touchFound) {
+        this.mapTapTouchId = null;
+      }
     }
 
     // Handle camera rotation
     if (this.cameraTouchId !== null) {
+      // Check if the touch still exists
+      let touchFound = false;
       for (let i = 0; i < e.touches.length; i++) {
         const touch = e.touches[i];
         if (touch.identifier === this.cameraTouchId) {
+          touchFound = true;
           this.cameraDelta = {
             x: touch.clientX - this.lastCameraTouch.x,
             y: touch.clientY - this.lastCameraTouch.y,
@@ -309,12 +331,22 @@ export class MobileInput {
           break;
         }
       }
+      // If touch was lost (e.g., ended unexpectedly), clear it
+      if (!touchFound) {
+        this.cameraTouchId = null;
+        this.cameraDelta = { x: 0, y: 0 };
+      }
     }
   }
 
   private handleCameraTouchEnd(e: TouchEvent): void {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
+      
+      // Skip joystick touches - they're handled separately
+      if (touch.identifier === this.joystickTouchId) {
+        continue;
+      }
       
       // Handle map tap end
       if (touch.identifier === this.mapTapTouchId) {
@@ -332,7 +364,35 @@ export class MobileInput {
       if (touch.identifier === this.cameraTouchId) {
         this.cameraTouchId = null;
         this.cameraDelta = { x: 0, y: 0 };
-        break;
+      }
+    }
+    
+    // Also check if any tracked touches are no longer in the touches list
+    // This handles cases where touches might be lost unexpectedly
+    if (this.mapTapTouchId !== null) {
+      let touchExists = false;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === this.mapTapTouchId) {
+          touchExists = true;
+          break;
+        }
+      }
+      if (!touchExists) {
+        this.mapTapTouchId = null;
+      }
+    }
+    
+    if (this.cameraTouchId !== null) {
+      let touchExists = false;
+      for (let i = 0; i < e.touches.length; i++) {
+        if (e.touches[i].identifier === this.cameraTouchId) {
+          touchExists = true;
+          break;
+        }
+      }
+      if (!touchExists) {
+        this.cameraTouchId = null;
+        this.cameraDelta = { x: 0, y: 0 };
       }
     }
   }
