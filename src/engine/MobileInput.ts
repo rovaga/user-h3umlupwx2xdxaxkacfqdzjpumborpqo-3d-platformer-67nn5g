@@ -29,6 +29,7 @@ export class MobileInput {
   private jumpPressed = false;
   private createMode = true; // true = create, false = destroy
   private mapTapPressed = false; // Track map taps for create/destroy
+  private mapTapPosition: TouchPosition | null = null; // Store tap position for raycasting
 
   private joystickElement: HTMLElement | null = null;
   private joystickKnobElement: HTMLElement | null = null;
@@ -319,6 +320,11 @@ export class MobileInput {
       if (touch.identifier === this.mapTapTouchId) {
         // This was a tap (not a drag), trigger map interaction
         this.mapTapPressed = true;
+        // Store tap position for raycasting
+        this.mapTapPosition = {
+          x: touch.clientX,
+          y: touch.clientY,
+        };
         this.mapTapTouchId = null;
       }
       
@@ -404,11 +410,14 @@ export class MobileInput {
 
   /**
    * Consume map tap (resets to false after reading once).
+   * Returns the tap position in screen coordinates (clientX, clientY).
    */
-  consumeMapTap(): boolean {
+  consumeMapTap(): { pressed: boolean; position: { x: number; y: number } | null } {
     const pressed = this.mapTapPressed;
+    const position = this.mapTapPosition;
     this.mapTapPressed = false;
-    return pressed;
+    this.mapTapPosition = null;
+    return { pressed, position };
   }
 
   /**

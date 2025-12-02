@@ -106,17 +106,27 @@ export class VoxelGame implements Game {
     });
   }
 
-  private getBlockRaycast(): { 
+  private getBlockRaycast(screenX?: number, screenY?: number): { 
     hit: boolean; 
     position?: THREE.Vector3; 
     normal?: THREE.Vector3;
     blockPosition?: { x: number; y: number; z: number };
   } {
-    // Cast ray from camera forward
-    const direction = new THREE.Vector3();
-    this.engine.camera.getWorldDirection(direction);
-    
-    this.raycaster.set(this.engine.camera.position, direction);
+    // Cast ray from camera through screen position (or center if not provided)
+    if (screenX !== undefined && screenY !== undefined) {
+      // Convert screen coordinates to normalized device coordinates (-1 to 1)
+      const rect = this.engine.renderer.domElement.getBoundingClientRect();
+      const normalizedX = ((screenX - rect.left) / rect.width) * 2 - 1;
+      const normalizedY = -((screenY - rect.top) / rect.height) * 2 + 1;
+      
+      this.mouse.set(normalizedX, normalizedY);
+      this.raycaster.setFromCamera(this.mouse, this.engine.camera);
+    } else {
+      // Default: cast ray from camera forward (center of screen)
+      const direction = new THREE.Vector3();
+      this.engine.camera.getWorldDirection(direction);
+      this.raycaster.set(this.engine.camera.position, direction);
+    }
     
     // Get all block meshes from the world
     const blockMeshes = this.voxelWorld.getBlockMeshes();
@@ -145,8 +155,8 @@ export class VoxelGame implements Game {
     return { hit: false };
   }
 
-  private destroyBlock(): void {
-    const raycast = this.getBlockRaycast();
+  private destroyBlock(screenX?: number, screenY?: number): void {
+    const raycast = this.getBlockRaycast(screenX, screenY);
     
     if (raycast.hit && raycast.blockPosition) {
       this.voxelWorld.removeBlock(
@@ -157,8 +167,8 @@ export class VoxelGame implements Game {
     }
   }
 
-  private placeBlock(): void {
-    const raycast = this.getBlockRaycast();
+  private placeBlock(screenX?: number, screenY?: number): void {
+    const raycast = this.getBlockRaycast(screenX, screenY);
     
     if (raycast.hit && raycast.position && raycast.normal) {
       // Calculate where to place the block (adjacent to the hit face)
@@ -226,6 +236,7 @@ export class VoxelGame implements Game {
   private updatePointer(): void {
     if (!this.destroyPointerMesh || !this.placePointerMesh) return;
 
+    // Use center of screen for pointer visualization (always shows where you're looking)
     const raycast = this.getBlockRaycast();
     const isPointerLocked = this.engine.input.isPointerLocked();
     const isMobile = this.engine.mobileInput.isMobileControlsActive();
@@ -284,11 +295,16 @@ export class VoxelGame implements Game {
 
     // Handle mobile map taps for create/destroy
     if (this.engine.mobileInput.isMobileControlsActive()) {
-      if (this.engine.mobileInput.consumeMapTap()) {
+      const tapResult = this.engine.mobileInput.consumeMapTap();
+      if (tapResult.pressed) {
+        // Store tap position for raycasting
+        const tapScreenX = tapResult.position?.x;
+        const tapScreenY = tapResult.position?.y;
+        
         if (this.engine.mobileInput.isCreateMode()) {
-          this.placeBlock();
+          this.placeBlock(tapScreenX, tapScreenY);
         } else {
-          this.destroyBlock();
+          this.destroyBlock(tapScreenX, tapScreenY);
         }
       }
     }
