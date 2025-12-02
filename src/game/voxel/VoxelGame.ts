@@ -192,6 +192,16 @@ export class VoxelGame implements Game {
   update(deltaTime: number): void {
     // Update camera controller (handles movement and rotation)
     this.cameraController.update(deltaTime);
+
+    // Handle mobile create/destroy button presses
+    if (this.engine.mobileInput.isMobileControlsActive()) {
+      if (this.engine.mobileInput.consumeCreate()) {
+        this.placeBlock();
+      }
+      if (this.engine.mobileInput.consumeDestroy()) {
+        this.destroyBlock();
+      }
+    }
   }
 
   onResize(width: number, height: number): void {

@@ -45,35 +45,60 @@ export class FirstPersonCamera {
   }
 
   update(deltaTime: number): void {
-    if (!this.engine.input.isPointerLocked()) {
+    const isMobile = this.engine.mobileInput.isMobileControlsActive();
+    const isPointerLocked = this.engine.input.isPointerLocked();
+    
+    // Allow updates if pointer is locked OR mobile controls are active
+    if (!isPointerLocked && !isMobile) {
       return;
     }
 
-    // Handle mouse look
-    const mouseDelta = this.engine.input.getMouseDelta();
-    const sensitivity = 0.002;
-    
-    this.euler.setFromQuaternion(this.engine.camera.quaternion);
-    this.euler.y -= mouseDelta.x * sensitivity;
-    this.euler.x -= mouseDelta.y * sensitivity;
-    
-    // Clamp vertical rotation
-    this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
+    // Handle mouse look (desktop) or touch camera (mobile)
+    if (isPointerLocked) {
+      const mouseDelta = this.engine.input.getMouseDelta();
+      const sensitivity = 0.002;
+      
+      this.euler.setFromQuaternion(this.engine.camera.quaternion);
+      this.euler.y -= mouseDelta.x * sensitivity;
+      this.euler.x -= mouseDelta.y * sensitivity;
+      
+      // Clamp vertical rotation
+      this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
+    } else if (isMobile) {
+      // Handle touch camera rotation
+      const touchDelta = this.engine.mobileInput.getCameraDelta();
+      const sensitivity = 0.002;
+      
+      this.euler.setFromQuaternion(this.engine.camera.quaternion);
+      this.euler.y -= touchDelta.x * sensitivity;
+      this.euler.x -= touchDelta.y * sensitivity;
+      
+      // Clamp vertical rotation
+      this.euler.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.euler.x));
+    }
 
-    // Handle keyboard movement
+    // Handle keyboard movement (desktop) or joystick (mobile)
     const moveDirection = new THREE.Vector3();
     
-    if (this.engine.input.isKeyPressed('KeyW')) {
-      moveDirection.z -= 1;
-    }
-    if (this.engine.input.isKeyPressed('KeyS')) {
-      moveDirection.z += 1;
-    }
-    if (this.engine.input.isKeyPressed('KeyA')) {
-      moveDirection.x -= 1;
-    }
-    if (this.engine.input.isKeyPressed('KeyD')) {
-      moveDirection.x += 1;
+    if (isMobile) {
+      // Use joystick input
+      const joystick = this.engine.mobileInput.getJoystickVector();
+      moveDirection.x = joystick.x;
+      moveDirection.z = joystick.y;
+    } else {
+      // Use keyboard input
+      if (this.engine.input.isKeyPressed('KeyW')) {
+        moveDirection.z -= 1;
+      }
+      if (this.engine.input.isKeyPressed('KeyS')) {
+        moveDirection.z += 1;
+      }
+      if (this.engine.input.isKeyPressed('KeyA')) {
+        moveDirection.x -= 1;
+      }
+      if (this.engine.input.isKeyPressed('KeyD')) {
+        moveDirection.x += 1;
+      }
     }
 
     // Normalize movement direction
@@ -101,8 +126,12 @@ export class FirstPersonCamera {
       this.velocity.z = 0;
     }
 
-    // Handle jumping
-    if (this.engine.input.isKeyPressed('Space') && this.isOnGround) {
+    // Handle jumping (keyboard or mobile button)
+    const jumpPressed = isMobile 
+      ? this.engine.mobileInput.consumeJump()
+      : this.engine.input.isKeyPressed('Space');
+      
+    if (jumpPressed && this.isOnGround) {
       this.velocity.y = this.jumpSpeed;
       this.isOnGround = false;
     }

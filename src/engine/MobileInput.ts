@@ -27,10 +27,14 @@ export class MobileInput {
   private cameraDelta: TouchPosition = { x: 0, y: 0 };
 
   private jumpPressed = false;
+  private createPressed = false;
+  private destroyPressed = false;
 
   private joystickElement: HTMLElement | null = null;
   private joystickKnobElement: HTMLElement | null = null;
   private jumpButtonElement: HTMLElement | null = null;
+  private createButtonElement: HTMLElement | null = null;
+  private destroyButtonElement: HTMLElement | null = null;
 
   constructor() {
     this.setupMobileControls();
@@ -85,6 +89,40 @@ export class MobileInput {
           touch-action: none;
           user-select: none;
         ">JUMP</button>
+
+        <!-- Create Button -->
+        <button id="create-button" style="
+          position: fixed;
+          top: 80px;
+          right: 60px;
+          width: 80px;
+          height: 80px;
+          background: rgba(100, 255, 100, 0.3);
+          border: 3px solid rgba(100, 255, 100, 0.6);
+          border-radius: 50%;
+          color: white;
+          font-size: 14px;
+          font-weight: bold;
+          touch-action: none;
+          user-select: none;
+        ">CREATE</button>
+
+        <!-- Destroy Button -->
+        <button id="destroy-button" style="
+          position: fixed;
+          top: 80px;
+          right: 160px;
+          width: 80px;
+          height: 80px;
+          background: rgba(255, 100, 100, 0.3);
+          border: 3px solid rgba(255, 100, 100, 0.6);
+          border-radius: 50%;
+          color: white;
+          font-size: 14px;
+          font-weight: bold;
+          touch-action: none;
+          user-select: none;
+        ">DESTROY</button>
       </div>
     `;
 
@@ -93,9 +131,16 @@ export class MobileInput {
     this.joystickElement = document.getElementById('joystick');
     this.joystickKnobElement = document.getElementById('joystick-knob');
     this.jumpButtonElement = document.getElementById('jump-button');
+    this.createButtonElement = document.getElementById('create-button');
+    this.destroyButtonElement = document.getElementById('destroy-button');
 
-    // Show/hide based on orientation
+    // Show/hide based on device type
     this.updateControlsVisibility();
+    
+    // Also check after a short delay to ensure proper detection
+    setTimeout(() => {
+      this.updateControlsVisibility();
+    }, 100);
   }
 
   private setupEventListeners(): void {
@@ -110,11 +155,41 @@ export class MobileInput {
     if (this.jumpButtonElement) {
       this.jumpButtonElement.addEventListener('touchstart', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         this.jumpPressed = true;
       });
       this.jumpButtonElement.addEventListener('touchend', (e) => {
         e.preventDefault();
+        e.stopPropagation();
         this.jumpPressed = false;
+      });
+    }
+
+    // Create button events
+    if (this.createButtonElement) {
+      this.createButtonElement.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.createPressed = true;
+      });
+      this.createButtonElement.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.createPressed = false;
+      });
+    }
+
+    // Destroy button events
+    if (this.destroyButtonElement) {
+      this.destroyButtonElement.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.destroyPressed = true;
+      });
+      this.destroyButtonElement.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.destroyPressed = false;
       });
     }
 
@@ -130,6 +205,7 @@ export class MobileInput {
 
   private handleJoystickStart(e: TouchEvent): void {
     e.preventDefault();
+    e.stopPropagation();
     if (this.joystickTouchId !== null) return;
 
     const touch = e.changedTouches[0];
@@ -147,6 +223,7 @@ export class MobileInput {
 
   private handleJoystickMove(e: TouchEvent): void {
     e.preventDefault();
+    e.stopPropagation();
     if (!this.joystickActive) return;
 
     for (let i = 0; i < e.changedTouches.length; i++) {
@@ -160,6 +237,7 @@ export class MobileInput {
 
   private handleJoystickEnd(e: TouchEvent): void {
     e.preventDefault();
+    e.stopPropagation();
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
       if (touch.identifier === this.joystickTouchId) {
@@ -253,11 +331,12 @@ export class MobileInput {
     const controls = document.getElementById('mobile-controls');
     if (!controls) return;
 
-    // Show on portrait mobile, hide on landscape/desktop
-    const isPortrait = window.innerHeight > window.innerWidth;
-    const isMobile = window.innerWidth < 768;
+    // Show on mobile devices (touch devices)
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+      || ('ontouchstart' in window) 
+      || (navigator.maxTouchPoints > 0);
 
-    controls.style.display = isPortrait && isMobile ? 'block' : 'none';
+    controls.style.display = isMobile ? 'block' : 'none';
   }
 
   /**
@@ -288,6 +367,38 @@ export class MobileInput {
   consumeJump(): boolean {
     const pressed = this.jumpPressed;
     this.jumpPressed = false;
+    return pressed;
+  }
+
+  /**
+   * Check if create button is pressed.
+   */
+  isCreatePressed(): boolean {
+    return this.createPressed;
+  }
+
+  /**
+   * Consume create press (resets to false after reading once).
+   */
+  consumeCreate(): boolean {
+    const pressed = this.createPressed;
+    this.createPressed = false;
+    return pressed;
+  }
+
+  /**
+   * Check if destroy button is pressed.
+   */
+  isDestroyPressed(): boolean {
+    return this.destroyPressed;
+  }
+
+  /**
+   * Consume destroy press (resets to false after reading once).
+   */
+  consumeDestroy(): boolean {
+    const pressed = this.destroyPressed;
+    this.destroyPressed = false;
     return pressed;
   }
 
