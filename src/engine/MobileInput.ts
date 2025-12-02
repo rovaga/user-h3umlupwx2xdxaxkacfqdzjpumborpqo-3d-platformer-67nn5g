@@ -27,14 +27,14 @@ export class MobileInput {
   private cameraDelta: TouchPosition = { x: 0, y: 0 };
 
   private jumpPressed = false;
-  private createPressed = false;
-  private destroyPressed = false;
+  private createMode = true; // true = create, false = destroy
+  private mapTapPressed = false; // Track map taps for create/destroy
 
   private joystickElement: HTMLElement | null = null;
   private joystickKnobElement: HTMLElement | null = null;
   private jumpButtonElement: HTMLElement | null = null;
-  private createButtonElement: HTMLElement | null = null;
-  private destroyButtonElement: HTMLElement | null = null;
+  private toggleButtonElement: HTMLElement | null = null;
+  private mapTapTouchId: number | null = null;
 
   constructor() {
     this.setupMobileControls();
@@ -73,6 +73,23 @@ export class MobileInput {
           "></div>
         </div>
 
+        <!-- Toggle Button (Create/Destroy) -->
+        <button id="toggle-button" style="
+          position: fixed;
+          bottom: 220px;
+          right: 60px;
+          width: 80px;
+          height: 80px;
+          background: rgba(100, 255, 100, 0.3);
+          border: 3px solid rgba(100, 255, 100, 0.6);
+          border-radius: 50%;
+          color: white;
+          font-size: 12px;
+          font-weight: bold;
+          touch-action: none;
+          user-select: none;
+        ">CREATE</button>
+
         <!-- Jump Button -->
         <button id="jump-button" style="
           position: fixed;
@@ -89,40 +106,6 @@ export class MobileInput {
           touch-action: none;
           user-select: none;
         ">JUMP</button>
-
-        <!-- Create Button -->
-        <button id="create-button" style="
-          position: fixed;
-          top: 80px;
-          right: 60px;
-          width: 80px;
-          height: 80px;
-          background: rgba(100, 255, 100, 0.3);
-          border: 3px solid rgba(100, 255, 100, 0.6);
-          border-radius: 50%;
-          color: white;
-          font-size: 14px;
-          font-weight: bold;
-          touch-action: none;
-          user-select: none;
-        ">CREATE</button>
-
-        <!-- Destroy Button -->
-        <button id="destroy-button" style="
-          position: fixed;
-          top: 80px;
-          right: 160px;
-          width: 80px;
-          height: 80px;
-          background: rgba(255, 100, 100, 0.3);
-          border: 3px solid rgba(255, 100, 100, 0.6);
-          border-radius: 50%;
-          color: white;
-          font-size: 14px;
-          font-weight: bold;
-          touch-action: none;
-          user-select: none;
-        ">DESTROY</button>
       </div>
     `;
 
@@ -131,8 +114,10 @@ export class MobileInput {
     this.joystickElement = document.getElementById('joystick');
     this.joystickKnobElement = document.getElementById('joystick-knob');
     this.jumpButtonElement = document.getElementById('jump-button');
-    this.createButtonElement = document.getElementById('create-button');
-    this.destroyButtonElement = document.getElementById('destroy-button');
+    this.toggleButtonElement = document.getElementById('toggle-button');
+
+    // Initialize toggle button state
+    this.updateToggleButton();
 
     // Show/hide based on device type
     this.updateControlsVisibility();
@@ -165,31 +150,13 @@ export class MobileInput {
       });
     }
 
-    // Create button events
-    if (this.createButtonElement) {
-      this.createButtonElement.addEventListener('touchstart', (e) => {
+    // Toggle button events (Create/Destroy)
+    if (this.toggleButtonElement) {
+      this.toggleButtonElement.addEventListener('touchstart', (e) => {
         e.preventDefault();
         e.stopPropagation();
-        this.createPressed = true;
-      });
-      this.createButtonElement.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.createPressed = false;
-      });
-    }
-
-    // Destroy button events
-    if (this.destroyButtonElement) {
-      this.destroyButtonElement.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.destroyPressed = true;
-      });
-      this.destroyButtonElement.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.destroyPressed = false;
+        this.createMode = !this.createMode;
+        this.updateToggleButton();
       });
     }
 
@@ -287,31 +254,59 @@ export class MobileInput {
     const target = e.target as HTMLElement;
     if (target.closest('#mobile-controls')) return;
 
-    if (this.cameraTouchId !== null) return;
-
-    const touch = e.touches[0];
-    this.cameraTouchId = touch.identifier;
-    this.lastCameraTouch = {
-      x: touch.clientX,
-      y: touch.clientY,
-    };
+    // Start tracking potential tap/drag
+    // We'll determine if it's a tap or drag based on movement
+    if (this.mapTapTouchId === null && this.cameraTouchId === null) {
+      const touch = e.touches[0];
+      this.mapTapTouchId = touch.identifier;
+      this.lastCameraTouch = {
+        x: touch.clientX,
+        y: touch.clientY,
+      };
+    }
   }
 
   private handleCameraTouchMove(e: TouchEvent): void {
-    if (this.cameraTouchId === null) return;
+    // Check if map tap moved (if moved significantly, it's a drag, not a tap)
+    if (this.mapTapTouchId !== null) {
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        if (touch.identifier === this.mapTapTouchId) {
+          const dx = touch.clientX - this.lastCameraTouch.x;
+          const dy = touch.clientY - this.lastCameraTouch.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          
+          // If moved more than 10px, treat as drag (camera rotation)
+          if (distance > 10) {
+            // Switch to camera control
+            this.cameraTouchId = this.mapTapTouchId;
+            this.mapTapTouchId = null;
+            // Update last touch position for camera delta calculation
+            this.lastCameraTouch = {
+              x: touch.clientX,
+              y: touch.clientY,
+            };
+          }
+          break;
+        }
+      }
+    }
 
-    for (let i = 0; i < e.touches.length; i++) {
-      const touch = e.touches[i];
-      if (touch.identifier === this.cameraTouchId) {
-        this.cameraDelta = {
-          x: touch.clientX - this.lastCameraTouch.x,
-          y: touch.clientY - this.lastCameraTouch.y,
-        };
-        this.lastCameraTouch = {
-          x: touch.clientX,
-          y: touch.clientY,
-        };
-        break;
+    // Handle camera rotation
+    if (this.cameraTouchId !== null) {
+      for (let i = 0; i < e.touches.length; i++) {
+        const touch = e.touches[i];
+        if (touch.identifier === this.cameraTouchId) {
+          this.cameraDelta = {
+            x: touch.clientX - this.lastCameraTouch.x,
+            y: touch.clientY - this.lastCameraTouch.y,
+          };
+          this.lastCameraTouch = {
+            x: touch.clientX,
+            y: touch.clientY,
+          };
+          break;
+        }
       }
     }
   }
@@ -319,11 +314,34 @@ export class MobileInput {
   private handleCameraTouchEnd(e: TouchEvent): void {
     for (let i = 0; i < e.changedTouches.length; i++) {
       const touch = e.changedTouches[i];
+      
+      // Handle map tap end
+      if (touch.identifier === this.mapTapTouchId) {
+        // This was a tap (not a drag), trigger map interaction
+        this.mapTapPressed = true;
+        this.mapTapTouchId = null;
+      }
+      
+      // Handle camera touch end
       if (touch.identifier === this.cameraTouchId) {
         this.cameraTouchId = null;
         this.cameraDelta = { x: 0, y: 0 };
         break;
       }
+    }
+  }
+
+  private updateToggleButton(): void {
+    if (!this.toggleButtonElement) return;
+    
+    if (this.createMode) {
+      this.toggleButtonElement.textContent = 'CREATE';
+      this.toggleButtonElement.style.background = 'rgba(100, 255, 100, 0.3)';
+      this.toggleButtonElement.style.borderColor = 'rgba(100, 255, 100, 0.6)';
+    } else {
+      this.toggleButtonElement.textContent = 'DESTROY';
+      this.toggleButtonElement.style.background = 'rgba(255, 100, 100, 0.3)';
+      this.toggleButtonElement.style.borderColor = 'rgba(255, 100, 100, 0.6)';
     }
   }
 
@@ -371,34 +389,25 @@ export class MobileInput {
   }
 
   /**
-   * Check if create button is pressed.
+   * Get current mode (true = create, false = destroy).
    */
-  isCreatePressed(): boolean {
-    return this.createPressed;
+  isCreateMode(): boolean {
+    return this.createMode;
   }
 
   /**
-   * Consume create press (resets to false after reading once).
+   * Check if map tap occurred (for create/destroy).
    */
-  consumeCreate(): boolean {
-    const pressed = this.createPressed;
-    this.createPressed = false;
-    return pressed;
+  isMapTapPressed(): boolean {
+    return this.mapTapPressed;
   }
 
   /**
-   * Check if destroy button is pressed.
+   * Consume map tap (resets to false after reading once).
    */
-  isDestroyPressed(): boolean {
-    return this.destroyPressed;
-  }
-
-  /**
-   * Consume destroy press (resets to false after reading once).
-   */
-  consumeDestroy(): boolean {
-    const pressed = this.destroyPressed;
-    this.destroyPressed = false;
+  consumeMapTap(): boolean {
+    const pressed = this.mapTapPressed;
+    this.mapTapPressed = false;
     return pressed;
   }
 

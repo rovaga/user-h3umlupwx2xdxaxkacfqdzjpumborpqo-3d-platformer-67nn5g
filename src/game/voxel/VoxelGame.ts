@@ -282,13 +282,14 @@ export class VoxelGame implements Game {
     // Update pointer position
     this.updatePointer();
 
-    // Handle mobile create/destroy button presses
+    // Handle mobile map taps for create/destroy
     if (this.engine.mobileInput.isMobileControlsActive()) {
-      if (this.engine.mobileInput.consumeCreate()) {
-        this.placeBlock();
-      }
-      if (this.engine.mobileInput.consumeDestroy()) {
-        this.destroyBlock();
+      if (this.engine.mobileInput.consumeMapTap()) {
+        if (this.engine.mobileInput.isCreateMode()) {
+          this.placeBlock();
+        } else {
+          this.destroyBlock();
+        }
       }
     }
   }
