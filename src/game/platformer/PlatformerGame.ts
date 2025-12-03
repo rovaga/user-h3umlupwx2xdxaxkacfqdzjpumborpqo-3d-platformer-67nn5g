@@ -11,10 +11,12 @@ import type { Game } from '../../engine/Types';
 import { Player } from './Player';
 import { Platform } from './Platform';
 import { Ingredient, IngredientType } from './Ingredient';
+import { Car } from './Car';
 
 export class PlatformerGame implements Game {
   private engine: Engine;
   private player: Player;
+  private car: Car;
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
 
@@ -32,6 +34,9 @@ export class PlatformerGame implements Game {
 
     // Create player
     this.player = new Player(engine);
+
+    // Create car
+    this.car = new Car(engine, new THREE.Vector3(3, 1, 0));
 
     // Create ingredients
     this.createIngredients();
@@ -134,6 +139,9 @@ export class PlatformerGame implements Game {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
 
+    // Update car (handles input and movement)
+    this.car.update(deltaTime, this.platforms);
+
     // Update ingredients
     for (const ingredient of this.ingredients) {
       if (!ingredient.isCollected()) {
@@ -158,6 +166,7 @@ export class PlatformerGame implements Game {
 
   dispose(): void {
     this.player.dispose();
+    this.car.dispose();
     for (const platform of this.platforms) {
       platform.dispose();
     }
