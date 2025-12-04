@@ -19,6 +19,7 @@ export class PlatformerGame implements Game {
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
   private trees: THREE.Group[] = [];
+  private house: THREE.Group | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -40,6 +41,9 @@ export class PlatformerGame implements Game {
 
     // Create trees
     this.createTrees();
+
+    // Create house
+    this.createHouse();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -201,6 +205,42 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private async createHouse(): Promise<void> {
+    const houseUrl = this.engine.assetLoader.getUrl('models/House-1764884465390.glb');
+    if (!houseUrl) {
+      console.warn('[PlatformerGame] House model not found');
+      return;
+    }
+
+    const loader = new GLTFLoader();
+    
+    try {
+      const gltf = await loader.loadAsync(houseUrl);
+      const houseModel = gltf.scene;
+
+      // Enable shadows for the house model
+      houseModel.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Position the house in a visible location (e.g., near the center)
+      houseModel.position.set(-10, 0, -10);
+      
+      // Optionally rotate the house for better viewing angle
+      houseModel.rotation.y = Math.PI / 4;
+
+      this.engine.scene.add(houseModel);
+      this.house = houseModel;
+
+      console.log('[PlatformerGame] Added house to the scene');
+    } catch (error) {
+      console.error('[PlatformerGame] Failed to load house model:', error);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -249,6 +289,22 @@ export class PlatformerGame implements Game {
       });
     }
     this.trees = [];
+    
+    if (this.house) {
+      this.engine.scene.remove(this.house);
+      this.house.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+      this.house = null;
+    }
+    
     console.log('[PlatformerGame] Disposed');
   }
 }
