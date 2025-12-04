@@ -20,6 +20,7 @@ export class PlatformerGame implements Game {
   private ingredients: Ingredient[] = [];
   private trees: THREE.Group[] = [];
   private house: THREE.Group | null = null;
+  private rangeRover: THREE.Group | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -44,6 +45,9 @@ export class PlatformerGame implements Game {
 
     // Create house
     this.createHouse();
+
+    // Create Range Rover
+    this.createRangeRover();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -241,6 +245,42 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private async createRangeRover(): Promise<void> {
+    const rangeRoverUrl = this.engine.assetLoader.getUrl('models/Range_Rover-1764891148144.glb');
+    if (!rangeRoverUrl) {
+      console.warn('[PlatformerGame] Range Rover model not found');
+      return;
+    }
+
+    const loader = new GLTFLoader();
+    
+    try {
+      const gltf = await loader.loadAsync(rangeRoverUrl);
+      const rangeRoverModel = gltf.scene;
+
+      // Enable shadows for the Range Rover model
+      rangeRoverModel.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Position the Range Rover in a visible location
+      rangeRoverModel.position.set(10, 0, 10);
+      
+      // Rotate the Range Rover for better viewing angle
+      rangeRoverModel.rotation.y = -Math.PI / 4;
+
+      this.engine.scene.add(rangeRoverModel);
+      this.rangeRover = rangeRoverModel;
+
+      console.log('[PlatformerGame] Added Range Rover to the scene');
+    } catch (error) {
+      console.error('[PlatformerGame] Failed to load Range Rover model:', error);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -303,6 +343,21 @@ export class PlatformerGame implements Game {
         }
       });
       this.house = null;
+    }
+    
+    if (this.rangeRover) {
+      this.engine.scene.remove(this.rangeRover);
+      this.rangeRover.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+      this.rangeRover = null;
     }
     
     console.log('[PlatformerGame] Disposed');
