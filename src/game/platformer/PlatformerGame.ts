@@ -20,6 +20,8 @@ export class PlatformerGame implements Game {
   private ingredients: Ingredient[] = [];
   private trees: THREE.Group[] = [];
   private house: THREE.Group | null = null;
+  private pikachu: THREE.Group | null = null;
+  private danceTime: number = 0;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -44,6 +46,9 @@ export class PlatformerGame implements Game {
 
     // Create house
     this.createHouse();
+
+    // Create pikachu
+    this.createPikachu();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -241,6 +246,42 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private async createPikachu(): Promise<void> {
+    const pikachuUrl = this.engine.assetLoader.getUrl('models/pikachu-1764892395768.glb');
+    if (!pikachuUrl) {
+      console.warn('[PlatformerGame] Pikachu model not found');
+      return;
+    }
+
+    const loader = new GLTFLoader();
+    
+    try {
+      const gltf = await loader.loadAsync(pikachuUrl);
+      const pikachuModel = gltf.scene;
+
+      // Enable shadows for the pikachu model
+      pikachuModel.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Position pikachu in the middle of the map, slightly above ground
+      pikachuModel.position.set(0, 1, 0);
+      
+      // Scale the model appropriately (adjust if needed)
+      pikachuModel.scale.set(1, 1, 1);
+
+      this.engine.scene.add(pikachuModel);
+      this.pikachu = pikachuModel;
+
+      console.log('[PlatformerGame] Added pikachu to the scene');
+    } catch (error) {
+      console.error('[PlatformerGame] Failed to load pikachu model:', error);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -260,6 +301,30 @@ export class PlatformerGame implements Game {
           this.player.addIngredient(ingredientMesh, ingredientHeight);
         }
       }
+    }
+
+    // Update pikachu dancing animation
+    if (this.pikachu) {
+      this.danceTime += deltaTime;
+      
+      // Rotate around Y axis (spinning)
+      this.pikachu.rotation.y = this.danceTime * 2;
+      
+      // Bob up and down
+      const bobAmount = Math.sin(this.danceTime * 4) * 0.3;
+      this.pikachu.position.y = 1 + bobAmount;
+      
+      // Sway side to side
+      const swayAmount = Math.sin(this.danceTime * 3) * 0.2;
+      this.pikachu.position.x = swayAmount;
+      
+      // Sway forward and back
+      const forwardSway = Math.cos(this.danceTime * 3.5) * 0.15;
+      this.pikachu.position.z = forwardSway;
+      
+      // Scale pulsing for extra dance effect
+      const scalePulse = 1 + Math.sin(this.danceTime * 5) * 0.1;
+      this.pikachu.scale.set(scalePulse, scalePulse, scalePulse);
     }
   }
 
@@ -303,6 +368,21 @@ export class PlatformerGame implements Game {
         }
       });
       this.house = null;
+    }
+    
+    if (this.pikachu) {
+      this.engine.scene.remove(this.pikachu);
+      this.pikachu.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+      this.pikachu = null;
     }
     
     console.log('[PlatformerGame] Disposed');
