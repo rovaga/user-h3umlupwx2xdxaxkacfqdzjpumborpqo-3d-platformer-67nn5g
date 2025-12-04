@@ -6,6 +6,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Engine } from '../../engine/Engine';
 import type { Game } from '../../engine/Types';
 import { Player } from './Player';
@@ -17,6 +18,7 @@ export class PlatformerGame implements Game {
   private player: Player;
   private platforms: Platform[] = [];
   private ingredients: Ingredient[] = [];
+  private trees: THREE.Group[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -35,6 +37,9 @@ export class PlatformerGame implements Game {
 
     // Create ingredients
     this.createIngredients();
+
+    // Create trees
+    this.createTrees();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -130,6 +135,72 @@ export class PlatformerGame implements Game {
     }
   }
 
+  private async createTrees(): Promise<void> {
+    const treeUrl = this.engine.assetLoader.getUrl('models/Tree-1764883116417.glb');
+    if (!treeUrl) {
+      console.warn('[PlatformerGame] Tree model not found');
+      return;
+    }
+
+    const loader = new GLTFLoader();
+    
+    try {
+      const gltf = await loader.loadAsync(treeUrl);
+      const treeModel = gltf.scene;
+
+      // Enable shadows for the tree model
+      treeModel.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Define tree positions around the ground
+      const treePositions = [
+        { x: -12, z: -12 },
+        { x: 12, z: -12 },
+        { x: -12, z: 12 },
+        { x: 12, z: 12 },
+        { x: -20, z: -8 },
+        { x: 20, z: -8 },
+        { x: -20, z: 8 },
+        { x: 20, z: 8 },
+        { x: -15, z: 0 },
+        { x: 15, z: 0 },
+        { x: 0, z: -15 },
+        { x: 0, z: 15 },
+        { x: -8, z: -20 },
+        { x: 8, z: -20 },
+        { x: -8, z: 20 },
+        { x: 8, z: 20 },
+        { x: -25, z: -5 },
+        { x: 25, z: -5 },
+        { x: -25, z: 5 },
+        { x: 25, z: 5 },
+      ];
+
+      for (const pos of treePositions) {
+        const treeInstance = treeModel.clone();
+        treeInstance.position.set(pos.x, 0, pos.z);
+        
+        // Add some random rotation for variety
+        treeInstance.rotation.y = Math.random() * Math.PI * 2;
+        
+        // Add some random scale variation (0.8 to 1.2)
+        const scale = 0.8 + Math.random() * 0.4;
+        treeInstance.scale.set(scale, scale, scale);
+
+        this.engine.scene.add(treeInstance);
+        this.trees.push(treeInstance);
+      }
+
+      console.log(`[PlatformerGame] Added ${this.trees.length} trees to the scene`);
+    } catch (error) {
+      console.error('[PlatformerGame] Failed to load tree model:', error);
+    }
+  }
+
   update(deltaTime: number): void {
     // Update player (handles input and movement)
     this.player.update(deltaTime, this.platforms);
@@ -164,6 +235,20 @@ export class PlatformerGame implements Game {
     for (const ingredient of this.ingredients) {
       ingredient.dispose();
     }
+    for (const tree of this.trees) {
+      this.engine.scene.remove(tree);
+      tree.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    }
+    this.trees = [];
     console.log('[PlatformerGame] Disposed');
   }
 }
