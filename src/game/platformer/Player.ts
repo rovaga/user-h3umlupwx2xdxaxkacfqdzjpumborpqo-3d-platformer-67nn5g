@@ -11,12 +11,12 @@ import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
-  private bunBottom: THREE.Mesh;
-  private bunTop: THREE.Mesh;
-  private indicator: THREE.Mesh;
-  private collectedIngredients: THREE.Mesh[] = [];
-  private ingredientStackHeight: number = 0;
+  private mesh: THREE.Group; // Group to hold girl character
+  private body: THREE.Mesh;
+  private head: THREE.Mesh;
+  private hair: THREE.Mesh;
+  private dress: THREE.Mesh;
+  private legs: THREE.Mesh[] = [];
 
   // Player state
   private position: THREE.Vector3;
@@ -40,42 +40,76 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player group (hamburger)
+    // Create player group (girl)
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574, // Golden brown bun color
+    // Create head (sphere)
+    const headGeometry = new THREE.SphereGeometry(0.3, 16, 16);
+    const headMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xffdbac, // Skin color
+      roughness: 0.8 
+    });
+    this.head = new THREE.Mesh(headGeometry, headMaterial);
+    this.head.position.y = 0.9;
+    this.head.castShadow = true;
+    this.mesh.add(this.head);
+
+    // Create hair (brown sphere, slightly larger)
+    const hairGeometry = new THREE.SphereGeometry(0.35, 16, 16);
+    const hairMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0x8b4513, // Brown hair
+      roughness: 0.9 
+    });
+    this.hair = new THREE.Mesh(hairGeometry, hairMaterial);
+    this.hair.position.y = 0.95;
+    this.hair.position.z = -0.1;
+    this.hair.castShadow = true;
+    this.mesh.add(this.hair);
+
+    // Create body (cylinder for torso)
+    const bodyGeometry = new THREE.CylinderGeometry(0.25, 0.3, 0.5, 8);
+    const bodyMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xffdbac, // Skin color
+      roughness: 0.8 
+    });
+    this.body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+    this.body.position.y = 0.5;
+    this.body.castShadow = true;
+    this.mesh.add(this.body);
+
+    // Create dress (cone shape)
+    const dressGeometry = new THREE.ConeGeometry(0.35, 0.6, 8);
+    const dressMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xff69b4, // Pink dress
       roughness: 0.7 
     });
-    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
-    this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
-    this.mesh.add(this.bunBottom);
+    this.dress = new THREE.Mesh(dressGeometry, dressMaterial);
+    this.dress.position.y = 0.1;
+    this.dress.rotation.x = Math.PI;
+    this.dress.castShadow = true;
+    this.mesh.add(this.dress);
 
-    // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
-    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574,
-      roughness: 0.7 
+    // Create legs (two cylinders)
+    const legGeometry = new THREE.CylinderGeometry(0.08, 0.08, 0.4, 8);
+    const legMaterial = new THREE.MeshStandardMaterial({ 
+      color: 0xffdbac, // Skin color
+      roughness: 0.8 
     });
-    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
-    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
-    this.mesh.add(this.bunTop);
+    
+    const leftLeg = new THREE.Mesh(legGeometry, legMaterial);
+    leftLeg.position.set(-0.1, -0.3, 0);
+    leftLeg.castShadow = true;
+    this.mesh.add(leftLeg);
+    this.legs.push(leftLeg);
 
-    // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
-    const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
-    this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
-    this.indicator.rotation.x = Math.PI / 2;
-    this.indicator.position.z = 0.6;
-    this.indicator.position.y = 0.25;
-    this.mesh.add(this.indicator);
+    const rightLeg = new THREE.Mesh(legGeometry, legMaterial);
+    rightLeg.position.set(0.1, -0.3, 0);
+    rightLeg.castShadow = true;
+    this.mesh.add(rightLeg);
+    this.legs.push(rightLeg);
 
-    console.log('[Player] Created as hamburger');
+    console.log('[Player] Created as girl character');
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
@@ -178,8 +212,8 @@ export class Player {
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
-      const playerRadius = 0.5;
+      const playerBottom = this.position.y - 0.5; // Adjusted for girl height
+      const playerRadius = 0.35;
 
       // Check horizontal overlap
       if (
@@ -194,7 +228,7 @@ export class Player {
           playerBottom >= bounds.min.y &&
           this.velocity.y <= 0
         ) {
-          this.position.y = bounds.max.y + 0.3;
+          this.position.y = bounds.max.y + 0.5;
           this.velocity.y = 0;
           this.onGround = true;
         }
@@ -232,41 +266,29 @@ export class Player {
     camera.lookAt(this.position);
   }
 
-  addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
-    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
-    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
-    this.mesh.add(ingredientMesh);
-    this.collectedIngredients.push(ingredientMesh);
-    this.ingredientStackHeight += height;
-    
-    // Move top bun and indicator higher to sit on top of ingredients
-    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
-    this.indicator.position.y = this.ingredientStackHeight + 0.15;
-    
-    console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
-  }
-
   getPosition(): THREE.Vector3 {
     return this.position.clone();
   }
 
   getRadius(): number {
-    return 0.5;
+    return 0.35;
   }
 
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.bunBottom.geometry.dispose();
-    (this.bunBottom.material as THREE.Material).dispose();
-    this.bunTop.geometry.dispose();
-    (this.bunTop.material as THREE.Material).dispose();
-    this.indicator.geometry.dispose();
-    (this.indicator.material as THREE.Material).dispose();
+    this.head.geometry.dispose();
+    (this.head.material as THREE.Material).dispose();
+    this.hair.geometry.dispose();
+    (this.hair.material as THREE.Material).dispose();
+    this.body.geometry.dispose();
+    (this.body.material as THREE.Material).dispose();
+    this.dress.geometry.dispose();
+    (this.dress.material as THREE.Material).dispose();
     
-    // Dispose collected ingredients
-    for (const ingredient of this.collectedIngredients) {
-      ingredient.geometry.dispose();
-      (ingredient.material as THREE.Material).dispose();
+    // Dispose legs
+    for (const leg of this.legs) {
+      leg.geometry.dispose();
+      (leg.material as THREE.Material).dispose();
     }
     
     console.log('[Player] Disposed');
