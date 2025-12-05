@@ -21,7 +21,7 @@ export class PlatformerGame implements Game {
   private trees: THREE.Group[] = [];
   private house: THREE.Group | null = null;
   private pikachu: THREE.Group | null = null;
-  private danceTime: number = 0;
+  private pikachuMixer: THREE.AnimationMixer | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -273,6 +273,26 @@ export class PlatformerGame implements Game {
       // Scale the model appropriately (adjust if needed)
       pikachuModel.scale.set(1, 1, 1);
 
+      // Set up animation mixer and play dancing animation
+      if (gltf.animations && gltf.animations.length > 0) {
+        this.pikachuMixer = new THREE.AnimationMixer(pikachuModel);
+        
+        // Find and play the dancing animation (usually the first animation or one with "dance" in the name)
+        const danceAnimation = gltf.animations.find(anim => 
+          anim.name.toLowerCase().includes('dance')
+        ) || gltf.animations[0];
+        
+        if (danceAnimation) {
+          const action = this.pikachuMixer.clipAction(danceAnimation);
+          action.play();
+          console.log(`[PlatformerGame] Playing animation: ${danceAnimation.name}`);
+        } else {
+          console.warn('[PlatformerGame] No animations found in pikachu model');
+        }
+      } else {
+        console.warn('[PlatformerGame] No animations found in pikachu model');
+      }
+
       this.engine.scene.add(pikachuModel);
       this.pikachu = pikachuModel;
 
@@ -303,28 +323,9 @@ export class PlatformerGame implements Game {
       }
     }
 
-    // Update pikachu dancing animation
-    if (this.pikachu) {
-      this.danceTime += deltaTime;
-      
-      // Rotate around Y axis (spinning)
-      this.pikachu.rotation.y = this.danceTime * 2;
-      
-      // Bob up and down
-      const bobAmount = Math.sin(this.danceTime * 4) * 0.3;
-      this.pikachu.position.y = 1 + bobAmount;
-      
-      // Sway side to side
-      const swayAmount = Math.sin(this.danceTime * 3) * 0.2;
-      this.pikachu.position.x = swayAmount;
-      
-      // Sway forward and back
-      const forwardSway = Math.cos(this.danceTime * 3.5) * 0.15;
-      this.pikachu.position.z = forwardSway;
-      
-      // Scale pulsing for extra dance effect
-      const scalePulse = 1 + Math.sin(this.danceTime * 5) * 0.1;
-      this.pikachu.scale.set(scalePulse, scalePulse, scalePulse);
+    // Update pikachu animation mixer
+    if (this.pikachuMixer) {
+      this.pikachuMixer.update(deltaTime);
     }
   }
 
@@ -383,6 +384,10 @@ export class PlatformerGame implements Game {
         }
       });
       this.pikachu = null;
+    }
+    
+    if (this.pikachuMixer) {
+      this.pikachuMixer = null;
     }
     
     console.log('[PlatformerGame] Disposed');
