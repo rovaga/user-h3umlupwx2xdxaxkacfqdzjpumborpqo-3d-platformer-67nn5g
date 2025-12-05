@@ -6,15 +6,18 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Engine } from '../../engine/Engine';
 import type { Platform } from './Platform';
 
 export class Player {
   private engine: Engine;
-  private mesh: THREE.Group; // Changed to Group to hold bun and ingredients
-  private bunBottom: THREE.Mesh;
-  private bunTop: THREE.Mesh;
-  private indicator: THREE.Mesh;
+  private mesh: THREE.Group;
+  private model: THREE.Group | null = null;
+  private animationMixer: THREE.AnimationMixer | null = null;
+  private idleAction: THREE.AnimationAction | null = null;
+  private walkAction: THREE.AnimationAction | null = null;
+  private isMoving: boolean = false;
   private collectedIngredients: THREE.Mesh[] = [];
   private ingredientStackHeight: number = 0;
 
@@ -40,48 +43,90 @@ export class Player {
     this.position = new THREE.Vector3(0, 2, 0);
     this.velocity = new THREE.Vector3(0, 0, 0);
 
-    // Create player group (hamburger)
+    // Create player group
     this.mesh = new THREE.Group();
     engine.scene.add(this.mesh);
 
-    // Create bottom bun (brown cylinder)
-    const bunBottomGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.3, 16);
-    const bunBottomMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574, // Golden brown bun color
-      roughness: 0.7 
-    });
-    this.bunBottom = new THREE.Mesh(bunBottomGeometry, bunBottomMaterial);
-    this.bunBottom.position.y = -0.15;
-    this.bunBottom.castShadow = true;
-    this.mesh.add(this.bunBottom);
+    // Load pikachu model
+    this.loadPikachuModel();
 
-    // Create top bun (smaller, positioned above)
-    const bunTopGeometry = new THREE.CylinderGeometry(0.5, 0.5, 0.2, 16);
-    const bunTopMaterial = new THREE.MeshStandardMaterial({ 
-      color: 0xd4a574,
-      roughness: 0.7 
-    });
-    this.bunTop = new THREE.Mesh(bunTopGeometry, bunTopMaterial);
-    this.bunTop.position.y = 0.25; // Will be adjusted as ingredients are added
-    this.bunTop.castShadow = true;
-    this.mesh.add(this.bunTop);
+    console.log('[Player] Created, loading pikachu model...');
+  }
 
-    // Create direction indicator (yellow cone)
-    const indicatorGeometry = new THREE.ConeGeometry(0.2, 0.4, 8);
-    const indicatorMaterial = new THREE.MeshStandardMaterial({ color: 0xffff00 });
-    this.indicator = new THREE.Mesh(indicatorGeometry, indicatorMaterial);
-    this.indicator.rotation.x = Math.PI / 2;
-    this.indicator.position.z = 0.6;
-    this.indicator.position.y = 0.25;
-    this.mesh.add(this.indicator);
+  private async loadPikachuModel(): Promise<void> {
+    const pikachuUrl = this.engine.assetLoader.getUrl('models/pikachu-1764892395768.glb');
+    if (!pikachuUrl) {
+      console.warn('[Player] Pikachu model not found');
+      return;
+    }
 
-    console.log('[Player] Created as hamburger');
+    const loader = new GLTFLoader();
+    
+    try {
+      const gltf = await loader.loadAsync(pikachuUrl);
+      this.model = gltf.scene;
+
+      // Enable shadows for the pikachu model
+      this.model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
+
+      // Scale the model appropriately
+      this.model.scale.set(1, 1, 1);
+
+      // Set up animation mixer
+      if (gltf.animations && gltf.animations.length > 0) {
+        this.animationMixer = new THREE.AnimationMixer(this.model);
+        
+        // Find idle and walk animations
+        const animations = gltf.animations;
+        const idleAnim = animations.find(anim => 
+          anim.name.toLowerCase().includes('idle')
+        ) || animations.find(anim => 
+          anim.name.toLowerCase().includes('stand')
+        ) || animations[0];
+        
+        const walkAnim = animations.find(anim => 
+          anim.name.toLowerCase().includes('walk')
+        ) || animations.find(anim => 
+          anim.name.toLowerCase().includes('run')
+        ) || (animations.length > 1 ? animations[1] : animations[0]);
+
+        // Create animation actions
+        if (idleAnim) {
+          this.idleAction = this.animationMixer.clipAction(idleAnim);
+          this.idleAction.setLoop(THREE.LoopRepeat);
+          this.idleAction.play();
+          console.log(`[Player] Loaded idle animation: ${idleAnim.name}`);
+        }
+
+        if (walkAnim && walkAnim !== idleAnim) {
+          this.walkAction = this.animationMixer.clipAction(walkAnim);
+          this.walkAction.setLoop(THREE.LoopRepeat);
+          console.log(`[Player] Loaded walk animation: ${walkAnim.name}`);
+        } else if (walkAnim === idleAnim) {
+          // If walk animation is the same as idle, use it for both
+          this.walkAction = this.idleAction;
+        }
+      } else {
+        console.warn('[Player] No animations found in pikachu model');
+      }
+
+      this.mesh.add(this.model);
+      console.log('[Player] Pikachu model loaded successfully');
+    } catch (error) {
+      console.error('[Player] Failed to load pikachu model:', error);
+    }
   }
 
   update(deltaTime: number, platforms: Platform[]): void {
     this.handleInput();
     this.applyPhysics();
     this.checkCollisions(platforms);
+    this.updateAnimations(deltaTime);
     this.updateMesh();
     this.updateCamera();
   }
@@ -107,8 +152,11 @@ export class Player {
       if (input.isKeyPressed('KeyD')) moveDirection.x += 1;
     }
 
+    // Track movement state
+    this.isMoving = moveDirection.length() > 0;
+
     // Apply movement
-    if (moveDirection.length() > 0) {
+    if (this.isMoving) {
       moveDirection.normalize();
 
       // Calculate movement relative to camera direction
@@ -173,12 +221,40 @@ export class Player {
     }
   }
 
+  private updateAnimations(deltaTime: number): void {
+    // Update animation mixer
+    if (this.animationMixer) {
+      this.animationMixer.update(deltaTime);
+    }
+
+    // Switch between idle and walk animations based on movement
+    if (this.idleAction && this.walkAction && this.idleAction !== this.walkAction) {
+      if (this.isMoving) {
+        // Fade to walk animation
+        if (this.idleAction.isRunning() && this.idleAction.getEffectiveWeight() > 0) {
+          this.idleAction.fadeOut(0.2);
+        }
+        if (!this.walkAction.isRunning() || this.walkAction.getEffectiveWeight() === 0) {
+          this.walkAction.reset().fadeIn(0.2).play();
+        }
+      } else {
+        // Fade to idle animation
+        if (this.walkAction.isRunning() && this.walkAction.getEffectiveWeight() > 0) {
+          this.walkAction.fadeOut(0.2);
+        }
+        if (!this.idleAction.isRunning() || this.idleAction.getEffectiveWeight() === 0) {
+          this.idleAction.reset().fadeIn(0.2).play();
+        }
+      }
+    }
+  }
+
   private checkCollisions(platforms: Platform[]): void {
     this.onGround = false;
 
     for (const platform of platforms) {
       const bounds = platform.getBounds();
-      const playerBottom = this.position.y - 0.3; // Adjusted for bun height
+      const playerBottom = this.position.y - 0.5; // Adjusted for pikachu height
       const playerRadius = 0.5;
 
       // Check horizontal overlap
@@ -194,7 +270,7 @@ export class Player {
           playerBottom >= bounds.min.y &&
           this.velocity.y <= 0
         ) {
-          this.position.y = bounds.max.y + 0.3;
+          this.position.y = bounds.max.y + 0.5;
           this.velocity.y = 0;
           this.onGround = true;
         }
@@ -233,15 +309,11 @@ export class Player {
   }
 
   addIngredient(ingredientMesh: THREE.Mesh, height: number): void {
-    // Position ingredient on top of current stack (stack starts at top of bottom bun, y=0)
-    ingredientMesh.position.y = this.ingredientStackHeight + height / 2;
+    // Position ingredient on top of pikachu
+    ingredientMesh.position.y = this.ingredientStackHeight + height / 2 + 1;
     this.mesh.add(ingredientMesh);
     this.collectedIngredients.push(ingredientMesh);
     this.ingredientStackHeight += height;
-    
-    // Move top bun and indicator higher to sit on top of ingredients
-    this.bunTop.position.y = this.ingredientStackHeight + 0.1;
-    this.indicator.position.y = this.ingredientStackHeight + 0.15;
     
     console.log(`[Player] Added ingredient. Stack height: ${this.ingredientStackHeight}`);
   }
@@ -256,17 +328,30 @@ export class Player {
 
   dispose(): void {
     this.engine.scene.remove(this.mesh);
-    this.bunBottom.geometry.dispose();
-    (this.bunBottom.material as THREE.Material).dispose();
-    this.bunTop.geometry.dispose();
-    (this.bunTop.material as THREE.Material).dispose();
-    this.indicator.geometry.dispose();
-    (this.indicator.material as THREE.Material).dispose();
+    
+    // Dispose pikachu model
+    if (this.model) {
+      this.model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    }
     
     // Dispose collected ingredients
     for (const ingredient of this.collectedIngredients) {
       ingredient.geometry.dispose();
       (ingredient.material as THREE.Material).dispose();
+    }
+    
+    // Clean up animation mixer
+    if (this.animationMixer) {
+      this.animationMixer = null;
     }
     
     console.log('[Player] Disposed');
