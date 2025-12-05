@@ -20,8 +20,6 @@ export class PlatformerGame implements Game {
   private ingredients: Ingredient[] = [];
   private trees: THREE.Group[] = [];
   private house: THREE.Group | null = null;
-  private pikachu: THREE.Group | null = null;
-  private pikachuMixer: THREE.AnimationMixer | null = null;
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -46,9 +44,6 @@ export class PlatformerGame implements Game {
 
     // Create house
     this.createHouse();
-
-    // Create pikachu
-    this.createPikachu();
 
     console.log('[PlatformerGame] Initialized');
   }
@@ -246,61 +241,6 @@ export class PlatformerGame implements Game {
     }
   }
 
-  private async createPikachu(): Promise<void> {
-    const pikachuUrl = this.engine.assetLoader.getUrl('models/pikachu-1764892395768.glb');
-    if (!pikachuUrl) {
-      console.warn('[PlatformerGame] Pikachu model not found');
-      return;
-    }
-
-    const loader = new GLTFLoader();
-    
-    try {
-      const gltf = await loader.loadAsync(pikachuUrl);
-      const pikachuModel = gltf.scene;
-
-      // Enable shadows for the pikachu model
-      pikachuModel.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.castShadow = true;
-          child.receiveShadow = true;
-        }
-      });
-
-      // Position pikachu in the middle of the map, slightly above ground
-      pikachuModel.position.set(0, 1, 0);
-      
-      // Scale the model appropriately (adjust if needed)
-      pikachuModel.scale.set(1, 1, 1);
-
-      // Set up animation mixer and play dancing animation
-      if (gltf.animations && gltf.animations.length > 0) {
-        this.pikachuMixer = new THREE.AnimationMixer(pikachuModel);
-        
-        // Find and play the dancing animation (usually the first animation or one with "dance" in the name)
-        const danceAnimation = gltf.animations.find(anim => 
-          anim.name.toLowerCase().includes('dance')
-        ) || gltf.animations[0];
-        
-        if (danceAnimation) {
-          const action = this.pikachuMixer.clipAction(danceAnimation);
-          action.play();
-          console.log(`[PlatformerGame] Playing animation: ${danceAnimation.name}`);
-        } else {
-          console.warn('[PlatformerGame] No animations found in pikachu model');
-        }
-      } else {
-        console.warn('[PlatformerGame] No animations found in pikachu model');
-      }
-
-      this.engine.scene.add(pikachuModel);
-      this.pikachu = pikachuModel;
-
-      console.log('[PlatformerGame] Added pikachu to the scene');
-    } catch (error) {
-      console.error('[PlatformerGame] Failed to load pikachu model:', error);
-    }
-  }
 
   update(deltaTime: number): void {
     // Update player (handles input and movement)
@@ -321,11 +261,6 @@ export class PlatformerGame implements Game {
           this.player.addIngredient(ingredientMesh, ingredientHeight);
         }
       }
-    }
-
-    // Update pikachu animation mixer
-    if (this.pikachuMixer) {
-      this.pikachuMixer.update(deltaTime);
     }
   }
 
@@ -369,25 +304,6 @@ export class PlatformerGame implements Game {
         }
       });
       this.house = null;
-    }
-    
-    if (this.pikachu) {
-      this.engine.scene.remove(this.pikachu);
-      this.pikachu.traverse((child) => {
-        if (child instanceof THREE.Mesh) {
-          child.geometry.dispose();
-          if (Array.isArray(child.material)) {
-            child.material.forEach((mat) => mat.dispose());
-          } else {
-            child.material.dispose();
-          }
-        }
-      });
-      this.pikachu = null;
-    }
-    
-    if (this.pikachuMixer) {
-      this.pikachuMixer = null;
     }
     
     console.log('[PlatformerGame] Disposed');
