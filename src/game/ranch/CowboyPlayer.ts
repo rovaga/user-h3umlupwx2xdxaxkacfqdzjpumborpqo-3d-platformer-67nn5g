@@ -14,6 +14,7 @@ export class CowboyPlayer {
   private body: THREE.Mesh;
   private hat: THREE.Mesh;
   private legs: THREE.Mesh[];
+  private boots: THREE.Mesh[];
   private arms: THREE.Mesh[];
 
   // Player state
@@ -101,6 +102,28 @@ export class CowboyPlayer {
     rightLeg.castShadow = true;
     this.mesh.add(rightLeg);
     this.legs.push(rightLeg);
+
+    // Create boots
+    this.boots = [];
+    const bootGeometry = new THREE.CylinderGeometry(0.14, 0.12, 0.15, 8);
+    const bootMaterial = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a, // Black boots
+      roughness: 0.7,
+    });
+
+    // Left boot
+    const leftBoot = new THREE.Mesh(bootGeometry, bootMaterial);
+    leftBoot.position.set(-0.15, -0.375, 0);
+    leftBoot.castShadow = true;
+    this.mesh.add(leftBoot);
+    this.boots.push(leftBoot);
+
+    // Right boot
+    const rightBoot = new THREE.Mesh(bootGeometry, bootMaterial);
+    rightBoot.position.set(0.15, -0.375, 0);
+    rightBoot.castShadow = true;
+    this.mesh.add(rightBoot);
+    this.boots.push(rightBoot);
 
     // Create arms
     this.arms = [];
@@ -313,6 +336,11 @@ export class CowboyPlayer {
     for (const leg of this.legs) {
       leg.geometry.dispose();
       (leg.material as THREE.Material).dispose();
+    }
+    
+    for (const boot of this.boots) {
+      boot.geometry.dispose();
+      (boot.material as THREE.Material).dispose();
     }
     
     for (const arm of this.arms) {

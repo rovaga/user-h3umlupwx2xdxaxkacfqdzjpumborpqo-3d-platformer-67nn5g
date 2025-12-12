@@ -27,7 +27,8 @@ export class BarrelCactus {
     this.position = config.position.clone();
     // Random size up to 0.5 cowboys tall (cowboy is ~1.0 units tall)
     // Minimum 0.2 to ensure visibility, maximum 0.5 as specified
-    this.size = config.size ?? (0.2 + Math.random() * 0.3); // 0.2 to 0.5
+    // Reduced to 1/3 of original size
+    this.size = config.size ?? ((0.2 + Math.random() * 0.3) / 3); // 0.067 to 0.167 (1/3 of original)
 
     // Load the barrel cactus GLB model
     this.loadModel();
@@ -104,7 +105,7 @@ export class BarrelCactus {
     const spines: THREE.Mesh[] = [];
     
     for (let i = 0; i < spineCount; i++) {
-      const spineGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.08, 4);
+      const spineGeometry = new THREE.CylinderGeometry(0.03, 0.03, 0.16, 4); // Double size
       const spineMaterial = new THREE.MeshStandardMaterial({
         color: 0x2d5016,
         roughness: 0.8,

@@ -108,7 +108,7 @@ export class Choya {
     const spines: THREE.Mesh[] = [];
     
     for (let i = 0; i < spineCount; i++) {
-      const spineGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.1, 4);
+      const spineGeometry = new THREE.CylinderGeometry(0.04, 0.04, 0.2, 4); // Double size
       const spineMaterial = new THREE.MeshStandardMaterial({
         color: 0x2d5016,
         roughness: 0.8,
