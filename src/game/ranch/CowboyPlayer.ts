@@ -299,6 +299,10 @@ export class CowboyPlayer {
     return this.lives;
   }
 
+  getMesh(): THREE.Group {
+    return this.mesh;
+  }
+
   dispose(): void {
     this.engine.scene.remove(this.mesh);
     this.body.geometry.dispose();
