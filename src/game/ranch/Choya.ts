@@ -11,7 +11,7 @@ import type { Engine } from '../../engine/Engine';
 
 interface ChoyaConfig {
   position: THREE.Vector3;
-  size?: number; // Size multiplier (1-3 cowboys tall)
+  size?: number; // Size multiplier (1-3 cowboys tall, with base scale factor applied)
 }
 
 export class Choya {
@@ -25,8 +25,13 @@ export class Choya {
   constructor(engine: Engine, config: ChoyaConfig) {
     this.engine = engine;
     this.position = config.position.clone();
-    // Random size between 1 and 3 cowboys tall (cowboy is ~1.0 units tall)
-    this.size = config.size ?? (1 + Math.random() * 2); // 1.0 to 3.0
+    // Random size between 1 and 3 cowboys tall (cowboy is ~1.15 units tall)
+    // Apply a base scale factor to make saguaros smaller - the model base is scaled down
+    const baseScale = 0.35; // Base scale factor to make saguaros smaller (reduced from default)
+    const minCowboys = 1;
+    const maxCowboys = 3;
+    // Size multiplier: baseScale * (1 to 3 cowboys)
+    this.size = config.size ?? (baseScale * (minCowboys + Math.random() * (maxCowboys - minCowboys))); // 0.35 to 1.05 scale
 
     // Load the cactus GLB model
     this.loadModel();
