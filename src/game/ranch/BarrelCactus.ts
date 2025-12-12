@@ -1,42 +1,43 @@
 /**
- * AI-EDITABLE: Choya (Cactus) Component
+ * AI-EDITABLE: Barrel Cactus Component
  *
- * Choyas are dangerous cacti with many arms and long spines.
- * When collided with, they cause damage and create spine effects.
+ * Barrel cacti are smaller, round cacti that are less dangerous than choyas.
+ * Maximum height is 1/2 cowboy.
  */
 
 import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Engine } from '../../engine/Engine';
 
-interface ChoyaConfig {
+interface BarrelCactusConfig {
   position: THREE.Vector3;
-  size?: number; // Size multiplier (1-3 cowboys tall)
+  size?: number; // Size multiplier (max 0.5 cowboys tall)
 }
 
-export class Choya {
+export class BarrelCactus {
   private engine: Engine;
   private mesh: THREE.Group | null = null;
   private position: THREE.Vector3;
   private size: number;
-  private collisionRadius: number = 1.2;
+  private collisionRadius: number = 0.6;
   private modelLoaded: boolean = false;
 
-  constructor(engine: Engine, config: ChoyaConfig) {
+  constructor(engine: Engine, config: BarrelCactusConfig) {
     this.engine = engine;
     this.position = config.position.clone();
-    // Random size between 1 and 3 cowboys tall (cowboy is ~1.0 units tall)
-    this.size = config.size ?? (1 + Math.random() * 2); // 1.0 to 3.0
+    // Random size up to 0.5 cowboys tall (cowboy is ~1.0 units tall)
+    // Minimum 0.2 to ensure visibility, maximum 0.5 as specified
+    this.size = config.size ?? (0.2 + Math.random() * 0.3); // 0.2 to 0.5
 
-    // Load the cactus GLB model
+    // Load the barrel cactus GLB model
     this.loadModel();
   }
 
   private async loadModel(): Promise<void> {
     try {
-      const cactusUrl = this.engine.assetLoader.getUrl('models/Cactus-1765500322237.glb');
+      const cactusUrl = this.engine.assetLoader.getUrl('models/Barrel_cactus-1765500635663.glb');
       if (!cactusUrl) {
-        console.error('[Choya] Cactus model not found');
+        console.error('[BarrelCactus] Barrel cactus model not found');
         return;
       }
 
@@ -47,11 +48,11 @@ export class Choya {
       this.mesh = gltf.scene.clone();
       this.mesh.position.set(this.position.x, 0, this.position.z);
       
-      // Scale the cactus based on size (1-3 cowboys tall)
+      // Scale the cactus based on size (max 0.5 cowboys tall)
       this.mesh.scale.set(this.size, this.size, this.size);
       
       // Adjust collision radius based on size
-      this.collisionRadius = 1.2 * this.size;
+      this.collisionRadius = 0.6 * this.size;
 
       // Enable shadows on all meshes in the model
       this.mesh.traverse((child) => {
@@ -64,9 +65,9 @@ export class Choya {
       this.engine.scene.add(this.mesh);
       this.modelLoaded = true;
 
-      console.log(`[Choya] Created at`, this.position, `size: ${this.size.toFixed(2)}`);
+      console.log(`[BarrelCactus] Created at`, this.position, `size: ${this.size.toFixed(2)}`);
     } catch (error) {
-      console.error('[Choya] Failed to load cactus model:', error);
+      console.error('[BarrelCactus] Failed to load barrel cactus model:', error);
     }
   }
 
@@ -75,8 +76,8 @@ export class Choya {
       return;
     }
 
-    // Slight swaying animation in desert wind
-    const windOffset = Math.sin(Date.now() * 0.001) * 0.02;
+    // Slight swaying animation in desert wind (less than choyas)
+    const windOffset = Math.sin(Date.now() * 0.001) * 0.01;
     this.mesh.rotation.z = windOffset;
   }
 
@@ -85,12 +86,12 @@ export class Choya {
       return false;
     }
 
-    const choyaWorldPos = new THREE.Vector3(
+    const cactusWorldPos = new THREE.Vector3(
       this.mesh.position.x,
-      this.mesh.position.y + 0.6, // Center of cactus body
+      this.mesh.position.y + 0.3 * this.size, // Center of barrel cactus body
       this.mesh.position.z
     );
-    const distance = choyaWorldPos.distanceTo(playerPosition);
+    const distance = cactusWorldPos.distanceTo(playerPosition);
     const collisionDistance = this.collisionRadius + playerRadius;
     
     return distance < collisionDistance;
@@ -98,12 +99,12 @@ export class Choya {
 
   createSpineEffect(playerPosition: THREE.Vector3, playerMesh: THREE.Group): THREE.Mesh[] {
     // Create visual effect of spines sticking to player
-    // Spawn a few spine pieces that stick to the player
-    const spineCount = 3 + Math.floor(Math.random() * 3);
+    // Spawn fewer spines than choyas (barrel cacti are less dangerous)
+    const spineCount = 1 + Math.floor(Math.random() * 2);
     const spines: THREE.Mesh[] = [];
     
     for (let i = 0; i < spineCount; i++) {
-      const spineGeometry = new THREE.CylinderGeometry(0.02, 0.02, 0.1, 4);
+      const spineGeometry = new THREE.CylinderGeometry(0.015, 0.015, 0.08, 4);
       const spineMaterial = new THREE.MeshStandardMaterial({
         color: 0x2d5016,
         roughness: 0.8,
@@ -114,9 +115,9 @@ export class Choya {
       
       // Position relative to player with random offset (in local space)
       spine.position.set(
-        (Math.random() - 0.5) * 0.5,
-        Math.random() * 0.5,
-        (Math.random() - 0.5) * 0.5
+        (Math.random() - 0.5) * 0.4,
+        Math.random() * 0.4,
+        (Math.random() - 0.5) * 0.4
       );
       spine.rotation.set(
         Math.random() * Math.PI,
@@ -149,6 +150,6 @@ export class Choya {
       });
     }
     
-    console.log('[Choya] Disposed');
+    console.log('[BarrelCactus] Disposed');
   }
 }

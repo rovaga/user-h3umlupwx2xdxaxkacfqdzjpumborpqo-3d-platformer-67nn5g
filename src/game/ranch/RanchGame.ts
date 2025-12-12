@@ -9,18 +9,27 @@ import type { Engine } from '../../engine/Engine';
 import type { Game } from '../../engine/Types';
 import { CowboyPlayer } from './CowboyPlayer';
 import { Choya } from './Choya';
+import { BarrelCactus } from './BarrelCactus';
 import { Horse } from './Horse';
 import { Cow } from './Cow';
 import { Chicken } from './Chicken';
+
+interface SpineData {
+  mesh: THREE.Mesh;
+  startTime: number;
+  fadeDuration: number;
+}
 
 export class RanchGame implements Game {
   private engine: Engine;
   private player: CowboyPlayer;
   private choyas: Choya[] = [];
+  private barrelCacti: BarrelCactus[] = [];
   private horses: Horse[] = [];
   private cows: Cow[] = [];
   private chickens: Chicken[] = [];
   private livesUI: HTMLElement | null = null;
+  private activeSpines: SpineData[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -40,6 +49,9 @@ export class RanchGame implements Game {
 
     // Create choyas (dangerous cacti)
     this.createChoyas();
+
+    // Create barrel cacti (smaller cacti)
+    this.createBarrelCacti();
 
     // Create animals
     this.createAnimals();
@@ -138,6 +150,39 @@ export class RanchGame implements Game {
     }
   }
 
+  private createBarrelCacti(): void {
+    // Create barrel cacti scattered around the desert (more numerous, smaller)
+    const barrelCactusPositions = [
+      { x: 5, z: 3 },
+      { x: -5, z: 7 },
+      { x: 7, z: -5 },
+      { x: -7, z: -6 },
+      { x: 12, z: 8 },
+      { x: -12, z: 10 },
+      { x: 9, z: -12 },
+      { x: -9, z: -14 },
+      { x: 16, z: 4 },
+      { x: -16, z: 6 },
+      { x: 11, z: 18 },
+      { x: -11, z: -18 },
+      { x: 22, z: -8 },
+      { x: -22, z: 12 },
+      { x: 14, z: 22 },
+      { x: -14, z: -22 },
+      { x: 28, z: 10 },
+      { x: -28, z: -10 },
+      { x: 6, z: 14 },
+      { x: -6, z: -16 },
+    ];
+
+    for (const pos of barrelCactusPositions) {
+      const barrelCactus = new BarrelCactus(this.engine, {
+        position: new THREE.Vector3(pos.x, 0, pos.z),
+      });
+      this.barrelCacti.push(barrelCactus);
+    }
+  }
+
   private createAnimals(): void {
     // Create horses
     const horsePositions = [
@@ -231,7 +276,62 @@ export class RanchGame implements Game {
         this.updateLivesUI();
         
         // Create visual effect (spines sticking to player)
-        choya.createSpineEffect(playerPos);
+        const playerMesh = this.player.getMesh();
+        const spines = choya.createSpineEffect(playerPos, playerMesh);
+        const now = Date.now();
+        for (const spine of spines) {
+          this.activeSpines.push({
+            mesh: spine,
+            startTime: now,
+            fadeDuration: 3000, // 3 seconds
+          });
+        }
+      }
+    }
+
+    // Update barrel cacti
+    for (const barrelCactus of this.barrelCacti) {
+      barrelCactus.update(deltaTime);
+
+      // Check collision with player
+      const playerPos = this.player.getPosition();
+      const playerRadius = this.player.getRadius();
+      if (barrelCactus.checkCollision(playerPos, playerRadius)) {
+        // Player takes damage
+        this.player.takeDamage();
+        this.updateLivesUI();
+        
+        // Create visual effect (spines sticking to player)
+        const playerMesh = this.player.getMesh();
+        const spines = barrelCactus.createSpineEffect(playerPos, playerMesh);
+        const now = Date.now();
+        for (const spine of spines) {
+          this.activeSpines.push({
+            mesh: spine,
+            startTime: now,
+            fadeDuration: 3000, // 3 seconds
+          });
+        }
+      }
+    }
+
+    // Update active spines (fade out over time)
+    const now = Date.now();
+    const playerMesh = this.player.getMesh();
+    for (let i = this.activeSpines.length - 1; i >= 0; i--) {
+      const spineData = this.activeSpines[i];
+      const elapsed = now - spineData.startTime;
+      
+      if (elapsed >= spineData.fadeDuration) {
+        // Remove spine
+        playerMesh.remove(spineData.mesh);
+        spineData.mesh.geometry.dispose();
+        (spineData.mesh.material as THREE.Material).dispose();
+        this.activeSpines.splice(i, 1);
+      } else {
+        // Fade out opacity
+        const opacity = 1.0 - (elapsed / spineData.fadeDuration);
+        (spineData.mesh.material as THREE.MeshStandardMaterial).opacity = opacity;
       }
     }
 
@@ -254,10 +354,23 @@ export class RanchGame implements Game {
   }
 
   dispose(): void {
+    // Clean up active spines
+    const playerMesh = this.player.getMesh();
+    for (const spineData of this.activeSpines) {
+      playerMesh.remove(spineData.mesh);
+      spineData.mesh.geometry.dispose();
+      (spineData.mesh.material as THREE.Material).dispose();
+    }
+    this.activeSpines = [];
+    
     this.player.dispose();
     
     for (const choya of this.choyas) {
       choya.dispose();
+    }
+    
+    for (const barrelCactus of this.barrelCacti) {
+      barrelCactus.dispose();
     }
     
     for (const horse of this.horses) {
