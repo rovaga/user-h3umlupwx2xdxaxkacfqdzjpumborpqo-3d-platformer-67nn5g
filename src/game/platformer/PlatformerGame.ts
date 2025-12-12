@@ -6,6 +6,7 @@
  */
 
 import * as THREE from 'three';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import type { Engine } from '../../engine/Engine';
 import type { Game } from '../../engine/Types';
 import { Player } from './Player';
@@ -21,6 +22,7 @@ export class PlatformerGame implements Game {
   private customers: Customer[] = [];
   private currentCustomer: Customer | null = null;
   private score: number = 0;
+  private loadedModels: THREE.Group[] = [];
 
   constructor(engine: Engine) {
     this.engine = engine;
@@ -46,7 +48,83 @@ export class PlatformerGame implements Game {
     // Initialize score display
     this.updateScoreDisplay();
 
+    // Load 3D models
+    this.loadModels();
+
     console.log('[PlatformerGame] Initialized');
+  }
+
+  private async loadModels(): Promise<void> {
+    const loader = new GLTFLoader();
+    const assetLoader = this.engine.assetLoader;
+
+    // Helper function to get asset URL with fallback
+    const getAssetUrl = (path: string): string | null => {
+      const url = assetLoader.getUrl(path);
+      if (url) return url;
+      // Fallback: construct URL directly for public assets
+      return `/assets/current-game/${path}`;
+    };
+
+    // Load Green Cactus
+    const cactusUrl = getAssetUrl('models/Green_Cactus-1765501176016.glb');
+    if (cactusUrl) {
+      try {
+        const cactusGlb = await loader.loadAsync(cactusUrl);
+        const cactusModel = cactusGlb.scene;
+        
+        // Position cactus models around the scene
+        const cactusPositions = [
+          new THREE.Vector3(5, 1.75, 2),
+          new THREE.Vector3(-8, 3.25, -3),
+          new THREE.Vector3(15, 2.25, -8),
+          new THREE.Vector3(-15, 2.75, 8),
+          new THREE.Vector3(25, 3.75, 2),
+        ];
+
+        cactusPositions.forEach((pos, index) => {
+          const cactusClone = cactusModel.clone();
+          cactusClone.position.copy(pos);
+          cactusClone.scale.set(0.5, 0.5, 0.5); // Adjust scale as needed
+          this.engine.scene.add(cactusClone);
+          this.loadedModels.push(cactusClone);
+        });
+
+        console.log('[PlatformerGame] Loaded Green Cactus model');
+      } catch (error) {
+        console.error('[PlatformerGame] Failed to load Green Cactus:', error);
+      }
+    }
+
+    // Load Flower Pot
+    const potUrl = getAssetUrl('models/Flower_Pot-1765501176016.glb');
+    if (potUrl) {
+      try {
+        const potGlb = await loader.loadAsync(potUrl);
+        const potModel = potGlb.scene;
+        
+        // Position flower pot models around the scene
+        const potPositions = [
+          new THREE.Vector3(10, 2.75, 7),
+          new THREE.Vector3(0, 2.25, -6),
+          new THREE.Vector3(-5, 1.75, 10),
+          new THREE.Vector3(18, 3.25, 10),
+          new THREE.Vector3(-20, 3.25, 7),
+        ];
+
+        potPositions.forEach((pos) => {
+          const potClone = potModel.clone();
+          potClone.position.copy(pos);
+          potClone.scale.set(0.5, 0.5, 0.5); // Adjust scale as needed
+          this.engine.scene.add(potClone);
+          this.loadedModels.push(potClone);
+        });
+
+        console.log('[PlatformerGame] Loaded Flower Pot model');
+      } catch (error) {
+        console.error('[PlatformerGame] Failed to load Flower Pot:', error);
+      }
+    }
   }
 
   private createGround(): void {
@@ -525,6 +603,21 @@ export class PlatformerGame implements Game {
     for (const customer of this.customers) {
       customer.dispose();
     }
+    // Dispose loaded models
+    for (const model of this.loadedModels) {
+      this.engine.scene.remove(model);
+      model.traverse((child) => {
+        if (child instanceof THREE.Mesh) {
+          child.geometry.dispose();
+          if (Array.isArray(child.material)) {
+            child.material.forEach((mat) => mat.dispose());
+          } else {
+            child.material.dispose();
+          }
+        }
+      });
+    }
+    this.loadedModels = [];
     console.log('[PlatformerGame] Disposed');
   }
 }
