@@ -27,11 +27,11 @@ export class Choya {
     this.position = config.position.clone();
     // Random size between 1 and 3 cowboys tall (cowboy is ~1.15 units tall)
     // Apply a base scale factor to make saguaros smaller - the model base is scaled down
-    const baseScale = 0.35; // Base scale factor to make saguaros smaller (reduced from default)
+    const baseScale = 0.35 / 3; // Base scale factor to make saguaros smaller (3x smaller than current)
     const minCowboys = 1;
     const maxCowboys = 3;
     // Size multiplier: baseScale * (1 to 3 cowboys)
-    this.size = config.size ?? (baseScale * (minCowboys + Math.random() * (maxCowboys - minCowboys))); // 0.35 to 1.05 scale
+    this.size = config.size ?? (baseScale * (minCowboys + Math.random() * (maxCowboys - minCowboys))); // 0.117 to 0.35 scale
 
     // Load the cactus GLB model
     this.loadModel();
